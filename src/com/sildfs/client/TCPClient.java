@@ -242,7 +242,7 @@ public class TCPClient
 		Socket s = null;
 		BufferedReader in;
 
-//		printHelpMessage();
+		printHelpMessage();
 
 		try
 		{
@@ -277,10 +277,7 @@ public class TCPClient
 			while (true)
 			{
 				s = new Socket(server, serverPort);
-			
-				System.out.println("connected to the server "+s.toString());
 
-				
 				System.out.print("Enter command> ");
 				String str = in.readLine();
 
@@ -290,10 +287,10 @@ public class TCPClient
 					break;
 				if(str.equals("help"))
 				{
-//					printHelpMessage();
+					printHelpMessage();
 					continue;
 				}
-//				processAndSend(s, str);
+				processAndSend(s, str);
 				s.close();
 			}
 

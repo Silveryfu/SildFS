@@ -22,9 +22,6 @@ public class SildMain implements Runnable {
 	private int portNumber;
 	private int proctocolType;
 
-	/* Store the connected client handler list */
-	private List<SildHandler> handlerList;
-
 	/* The default port number, as specified by the sample client */
 	private static final int DEFAULT_PORT = 7896;
 	private static final int TYPE_TCP = 1;
@@ -38,16 +35,10 @@ public class SildMain implements Runnable {
 	 */
 	private ExecutorService pool, trunk;
 
-	/**
-	 * Initialize all the thread executors
-	 */
 	public void startService() {
 		trunk = Executors.newSingleThreadExecutor();
 		pool = Executors.newCachedThreadPool();
 
-		// Initialiize the client list
-		handlerList = new LinkedList<SildHandler>();
-		
 		// Start the listening service
 		trunk.execute(this);
 	}
@@ -72,8 +63,7 @@ public class SildMain implements Runnable {
 				Socket clientSocket = listenSocket.accept();
 				SildHandler handler = new SildHandler(clientSocket);
 				
-				// Add handler to the list and start handling
-				handlerList.add(handler);
+				// Start handler for this client
 				pool.execute(handler);
 			} catch (Exception e) {
 				System.out.println("Failed to accept new client.");

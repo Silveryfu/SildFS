@@ -1,6 +1,7 @@
 package com.sildfs.server;
 
 import java.net.Socket;
+import com.sildfs.tools.*;
 
 /**
  * The client handler
@@ -22,7 +23,12 @@ public class SildHandler implements Runnable {
 
 	public void run() {
 		System.out.println("Start handling client: "
-				+ this.getSocket().hashCode());
+				+ this.getSocket().getInetAddress()+this.getSocket().getPort());
+		
+
+	
+		
+		
 	}
 
 	public Socket getSocket() {
