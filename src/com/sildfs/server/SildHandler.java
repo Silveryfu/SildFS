@@ -1,5 +1,7 @@
 package com.sildfs.server;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.Socket;
 import com.sildfs.tools.*;
 
@@ -13,6 +15,7 @@ import com.sildfs.tools.*;
 public class SildHandler implements Runnable {
 
 	private Socket socket;
+	private BufferedReader reader;
 
 	public SildHandler(Socket socket) {
 		this.setSocket(socket);
@@ -23,12 +26,16 @@ public class SildHandler implements Runnable {
 
 	public void run() {
 		System.out.println("Start handling client: "
-				+ this.getSocket().getInetAddress()+this.getSocket().getPort());
-		
+				+ this.getSocket().getInetAddress() + ":"
+				+ this.getSocket().getPort());
+		try {
+			reader = new BufferedReader(new InputStreamReader(
+					socket.getInputStream()));
 
-	
-		
-		
+		} catch (Exception e) {
+
+		}
+
 	}
 
 	public Socket getSocket() {
