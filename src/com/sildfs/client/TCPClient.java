@@ -234,7 +234,7 @@ public class TCPClient
 				System.out.println(new String(b));
 			}
 		}
-		s.setSoTimeout(0);
+//		s.setSoTimeout(0);
 	}
 
 	public static void main (String args[])

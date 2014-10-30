@@ -1,9 +1,9 @@
 package com.sildfs.server;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
-import com.sildfs.tools.*;
 
 /**
  * The client handler
@@ -29,15 +29,66 @@ public class SildHandler implements Runnable {
 				+ this.getSocket().getInetAddress() + ":"
 				+ this.getSocket().getPort());
 		try {
+			// Initialize the buffered reader
 			reader = new BufferedReader(new InputStreamReader(
 					socket.getInputStream()));
 
-		} catch (Exception e) {
-
+			// Call receive; call respond
+			if (this.receive())
+				this.respond();
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
-
 	}
 
+	public boolean receive() throws IOException {
+		SildReq req = new SildReq(reader.readLine());
+		req.printAll();
+		
+		String method = req.getMethod();
+		if(method.equals("READ")) {
+			
+		} else if(method.equals("NEW_TXN")) {
+			
+		} else if(method.equals("WRITE")) {
+			
+		} else if(method.equals("COMMIT")) {
+			
+		} else if(method.equals("ABORT")) {
+			
+		} else {
+			System.out.println("Un-understandable method.");
+		}
+		
+		return true;
+	}
+
+	public void respond() throws IOException {
+		System.out.println("Responding to "
+				+ this.getSocket().getInetAddress() + ":"
+				+ this.getSocket().getPort());
+	}
+	
+	public void read() throws IOException {
+		
+	}
+	
+	public void start_txn() throws IOException {
+		
+	}
+	
+	public void write() throws IOException {
+		
+	}
+	
+	public void commit() throws IOException {
+		
+	}
+	
+	public void abort() throws IOException {
+		
+	}
+	
 	public Socket getSocket() {
 		return socket;
 	}
