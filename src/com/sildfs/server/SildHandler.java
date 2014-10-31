@@ -42,53 +42,54 @@ public class SildHandler implements Runnable {
 	}
 
 	public boolean receive() throws IOException {
+		// Read the header field
 		SildReq req = new SildReq(reader.readLine());
 		req.printAll();
 		
 		String method = req.getMethod();
-		if(method.equals("READ")) {
+		if (method.equals("READ")) {
 			
-		} else if(method.equals("NEW_TXN")) {
-			
-		} else if(method.equals("WRITE")) {
-			
-		} else if(method.equals("COMMIT")) {
-			
-		} else if(method.equals("ABORT")) {
-			
+
+		} else if (method.equals("NEW_TXN")) {
+
+		} else if (method.equals("WRITE")) {
+
+		} else if (method.equals("COMMIT")) {
+
+		} else if (method.equals("ABORT")) {
+
 		} else {
 			System.out.println("Un-understandable method.");
 		}
-		
+
 		return true;
 	}
 
 	public void respond() throws IOException {
-		System.out.println("Responding to "
-				+ this.getSocket().getInetAddress() + ":"
-				+ this.getSocket().getPort());
+		System.out.println("Responding to " + this.getSocket().getInetAddress()
+				+ ":" + this.getSocket().getPort());
 	}
-	
+
 	public void read() throws IOException {
-		
+
 	}
-	
+
 	public void start_txn() throws IOException {
-		
+
 	}
-	
+
 	public void write() throws IOException {
-		
+
 	}
-	
+
 	public void commit() throws IOException {
-		
+
 	}
-	
+
 	public void abort() throws IOException {
-		
+
 	}
-	
+
 	public Socket getSocket() {
 		return socket;
 	}
