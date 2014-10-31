@@ -8,10 +8,10 @@ package com.sildfs.server;
  * @Date: Oct.14 2014
  */
 
+import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -19,13 +19,13 @@ public class SildMain implements Runnable {
 
 	/* Server parameters */
 	private ServerSocket listenSocket;
+	private String ip;
 	private int portNumber;
-	private int proctocolType;
+	private String dir;
 
-	/* The default port number, as specified by the sample client */
+	/* The default ip and port number, as specified by the sample client */
+	private static final String DEFAULT_IP = "127.0.0.1";
 	private static final int DEFAULT_PORT = 7896;
-	private static final int TYPE_TCP = 1;
-	private static final int TYPE_UDP = 2;
 
 	/**
 	 * Use executor services, 'pool' for service thread, whose underlying
@@ -45,9 +45,17 @@ public class SildMain implements Runnable {
 
 	public void run() {
 		try {
-			listenSocket = new ServerSocket(this.getPortNumber());
+			/**
+			 * Create the server listening socket, binds it to the given or
+			 * default Internet address and port number
+			 */
+			listenSocket = new ServerSocket();
+			listenSocket.bind(new InetSocketAddress(InetAddress.getByName(this
+					.getIp()), this.getPortNumber()));
+
 			System.out.println("SildFS starts listening to port: "
 					+ this.getPortNumber());
+
 		} catch (Exception e) {
 			System.out.println("Listening socket "
 					+ "fails to initialize. Please check if the port"
@@ -55,14 +63,14 @@ public class SildMain implements Runnable {
 			e.printStackTrace();
 			return;
 		}
-		
+
 		// TODO: handler the client side sudden disconnection here
 		while (true) {
 			try {
 				// Start the lisnening socket
 				Socket clientSocket = listenSocket.accept();
 				SildHandler handler = new SildHandler(clientSocket);
-				
+
 				// Start handler for this client
 				pool.execute(handler);
 			} catch (Exception e) {
@@ -72,10 +80,17 @@ public class SildMain implements Runnable {
 	}
 
 	SildMain() {
+		this.setIp(DEFAULT_IP);
 		this.setPortNumber(DEFAULT_PORT);
 	}
 
 	SildMain(int portNumber) {
+		this.setIp(DEFAULT_IP);
+		this.setPortNumber(portNumber);
+	}
+
+	SildMain(String ip, int portNumber) {
+		this.setIp(ip);
 		this.setPortNumber(portNumber);
 	}
 
@@ -95,11 +110,16 @@ public class SildMain implements Runnable {
 		this.portNumber = portNumber;
 	}
 
-	public static void main(String[] args) {
-		// System.out.println(args[0]);
-		// System.out.println(args[1]);
+	public String getIp() {
+		return ip;
+	}
 
-		// Use the default port number
+	public void setIp(String ip) {
+		this.ip = ip;
+	}
+
+	public static void main(String[] args) {
+		
 		SildMain sm = new SildMain();
 		sm.startService();
 	}
