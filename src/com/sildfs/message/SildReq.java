@@ -12,7 +12,6 @@ package com.sildfs.message;
  * casting
  * 
  * @author dif
- * @Date: Oct.14 2014
  */
 
 import com.sildfs.transaction.SildEntry;

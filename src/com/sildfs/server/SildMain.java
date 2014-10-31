@@ -3,8 +3,7 @@ package com.sildfs.server;
 /**
  * This file contains the trunk of sildfs. 
  * 
- * @Author: dif
- * @Date: Oct.14 2014
+ * @author: dif
  */
 
 import java.net.InetAddress;
@@ -13,6 +12,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import com.sildfs.tool.SildArgParser;
 
 public class SildMain implements Runnable {
 
@@ -57,8 +58,8 @@ public class SildMain implements Runnable {
 
 		} catch (Exception e) {
 			System.out.println("Listening socket "
-					+ "fails to initialize. Please check if the port"
-					+ this.getPortNumber() + "is already in use.");
+					+ "fails to initialize. Please check if the port "
+					+ this.getPortNumber() + " is already in use.");
 			e.printStackTrace();
 			return;
 		}
@@ -66,7 +67,7 @@ public class SildMain implements Runnable {
 		// TODO: handler the client side sudden disconnection here
 		while (true) {
 			try {
-				// Start the lisnening socket
+				// Start the listening socket
 				Socket clientSocket = listenSocket.accept();
 				SildHandler handler = new SildHandler(clientSocket);
 
@@ -78,19 +79,39 @@ public class SildMain implements Runnable {
 		}
 	}
 
-	SildMain() {
+	protected SildMain() {
+	}
+
+	SildMain(String dir) {
 		this.setIp(DEFAULT_IP);
 		this.setPortNumber(DEFAULT_PORT);
+		this.setDir(dir);
 	}
 
-	SildMain(int portNumber) {
+	SildMain(int portNumber, String dir) {
 		this.setIp(DEFAULT_IP);
 		this.setPortNumber(portNumber);
+		this.setDir(dir);
 	}
 
-	SildMain(String ip, int portNumber) {
+	SildMain(String ip, String dir) {
+		this.setIp(ip);
+		this.setPortNumber(DEFAULT_PORT);
+		this.setDir(dir);
+	}
+
+	SildMain(String ip, int portNumber, String dir) {
 		this.setIp(ip);
 		this.setPortNumber(portNumber);
+		this.setDir(dir);
+	}
+
+	public String getDir() {
+		return dir;
+	}
+
+	public void setDir(String dir) {
+		this.dir = dir;
 	}
 
 	public ServerSocket getListenSocket() {
@@ -117,9 +138,36 @@ public class SildMain implements Runnable {
 		this.ip = ip;
 	}
 
+	protected void printParam() {
+		System.out.println(this.getIp());
+		System.out.println(this.getPortNumber());
+		System.out.println(this.getDir());
+	}
+
 	public static void main(String[] args) {
-		
-		SildMain sild = new SildMain();
+
+		SildArgParser parser = new SildArgParser();
+
+		// Parse input arguments
+		parser.parse(args);
+		String dir = parser.getDir();
+		String ip = parser.getIp();
+		int port = parser.getPort();
+
+		// Enumerate the possibilities, setting up server parameters
+		SildMain sild;
+		if (ip == null && port == 0) {
+			sild = new SildMain(dir);
+		} else if (ip == null && port != 0) {
+			sild = new SildMain(port, dir);
+		} else if (port == 0 && ip != null) {
+			sild = new SildMain(ip, dir);
+		} else {
+			sild = new SildMain(ip, port, dir);
+		}
+
+		// Start Sild service
+		sild.printParam();
 		sild.startService();
 	}
 }

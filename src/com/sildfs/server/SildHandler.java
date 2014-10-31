@@ -13,7 +13,6 @@ import com.sildfs.message.*;
  * The client handler
  * 
  * @author dif
- * @Date: Oct.14 2014
  */
 
 public class SildHandler implements Runnable {

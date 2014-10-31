@@ -2,8 +2,7 @@ package com.sildfs.message;
 /**
  * An abstract class for all messages.
  * 
- * @Author: dif
- * @Date: Oct.14 2014
+ * @author: dif
  */
 public abstract class SildMsg {
 
