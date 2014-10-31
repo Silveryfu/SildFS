@@ -5,6 +5,10 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
 
+import com.sildfs.message.SildReq;
+import com.sildfs.message.*;
+
+
 /**
  * The client handler
  * 
@@ -43,7 +47,8 @@ public class SildHandler implements Runnable {
 
 	public boolean receive() throws IOException {
 		// Read the header field
-		SildReq req = new SildReq(reader.readLine());
+		SildReq req = new SildReq();
+		req.parseHeader(reader.readLine());
 		req.printAll();
 		
 		String method = req.getMethod();

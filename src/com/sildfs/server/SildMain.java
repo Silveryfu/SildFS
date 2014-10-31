@@ -3,7 +3,6 @@ package com.sildfs.server;
 /**
  * This file contains the trunk of sildfs. 
  * 
- * 
  * @Author: dif
  * @Date: Oct.14 2014
  */
@@ -120,7 +119,7 @@ public class SildMain implements Runnable {
 
 	public static void main(String[] args) {
 		
-		SildMain sm = new SildMain();
-		sm.startService();
+		SildMain sild = new SildMain();
+		sild.startService();
 	}
 }

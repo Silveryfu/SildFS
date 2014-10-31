@@ -1,4 +1,4 @@
-package com.sildfs.server;
+package com.sildfs.message;
 
 public class SildResp {
 
