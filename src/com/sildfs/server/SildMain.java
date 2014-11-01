@@ -14,6 +14,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.sildfs.tool.SildArgParser;
+import com.sildfs.transaction.SildLog;
 
 public class SildMain implements Runnable {
 
@@ -26,7 +27,7 @@ public class SildMain implements Runnable {
 	/* The default ip and port number, as specified by the sample client */
 	private static final String DEFAULT_IP = "127.0.0.1";
 	private static final int DEFAULT_PORT = 7896;
-
+	
 	/**
 	 * Use executor services, 'pool' for service thread, whose underlying
 	 * implementation will be CachedThreadPool for better thread resource
@@ -35,10 +36,19 @@ public class SildMain implements Runnable {
 	 */
 	private ExecutorService pool, trunk;
 
+	/**
+	 * The transactional log
+	 */
+	private SildLog sildlog;
+
 	public void startService() {
+		// Initialize the executor service
 		trunk = Executors.newSingleThreadExecutor();
 		pool = Executors.newCachedThreadPool();
 
+		// Initialize the SildLog
+		sildlog = new SildLog();
+		
 		// Start the listening service
 		trunk.execute(this);
 	}
@@ -139,6 +149,14 @@ public class SildMain implements Runnable {
 
 	public void setIp(String ip) {
 		this.ip = ip;
+	}
+	
+	public SildLog getSildlog() {
+		return sildlog;
+	}
+
+	public void setSildlog(SildLog sildlog) {
+		this.sildlog = sildlog;
 	}
 
 	protected void printParam() {

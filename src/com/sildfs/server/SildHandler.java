@@ -11,6 +11,7 @@ import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 
 import com.sildfs.message.SildReq;
+import com.sildfs.message.SildResp;
 
 /**
  * The client handler
@@ -90,10 +91,11 @@ public class SildHandler implements Runnable {
 
 	public void read(String file_name) {
 		try {
+			SildResp respond = new SildResp();
+			
 			// Read the given file and output to the client
 			RandomAccessFile read_file = new RandomAccessFile(this.getDir()
 					+ "/" + file_name, "r");
-			FileChannel inChannel = read_file.getChannel();
 			PrintStream out = new PrintStream(this.getSocket()
 					.getOutputStream(), true);
 
@@ -101,7 +103,9 @@ public class SildHandler implements Runnable {
 			int BUFFER_SIZE = 1024;
 			ByteBuffer buf = ByteBuffer.allocate(BUFFER_SIZE);
 			byte[] byte_array;
-
+			
+			// Obatain the file channel
+			FileChannel inChannel = read_file.getChannel();
 			while (inChannel.read(buf) > 0) {
 				buf.flip();
 				byte_array = new byte[buf.limit()];
