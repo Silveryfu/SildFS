@@ -53,6 +53,7 @@ public class SildHandler implements Runnable {
 		SildReq req = new SildReq();
 
 		// Read the header field
+		while(!reader.ready());
 		req.parseHeader(reader.readLine());
 
 		// Skip the blank line
@@ -63,13 +64,14 @@ public class SildHandler implements Runnable {
 
 		req.printAll();
 		// Execute according to the method
+		//TODO this.start_txn() return a respond
 		String method = req.getMethod();
 		if (method.equals("READ")) {
 			this.read(req.getData());
 		} else if (method.equals("NEW_TXN")) {
-
+			this.start_txn();
 		} else if (method.equals("WRITE")) {
-
+			this.write();
 		} else if (method.equals("COMMIT")) {
 
 		} else if (method.equals("ABORT")) {
@@ -88,6 +90,7 @@ public class SildHandler implements Runnable {
 
 	public void read(String file_name) {
 		try {
+			// Read the given file and output to the client
 			RandomAccessFile read_file = new RandomAccessFile(this.getDir()
 					+ "/" + file_name, "r");
 			FileChannel inChannel = read_file.getChannel();

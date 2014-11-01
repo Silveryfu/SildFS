@@ -16,9 +16,6 @@ package com.sildfs.message;
 
 public class SildReq extends SildMsg {
 
-	private String header;
-	private String method;
-
 	public SildReq() {
 	};
 
@@ -50,21 +47,5 @@ public class SildReq extends SildMsg {
 
 	public static void main(String[] args) {
 
-	}
-
-	public String getHeader() {
-		return header;
-	}
-
-	public void setHeader(String header) {
-		this.header = header;
-	}
-
-	public String getMethod() {
-		return method;
-	}
-
-	public void setMethod(String method) {
-		this.method = method;
 	}
 }

@@ -6,9 +6,11 @@ package com.sildfs.message;
  */
 public abstract class SildMsg {
 
+	private String method;
 	private int txn_id;
 	private int seq_num;
 	private int data_length;
+	private String header;
 	private String data;
 	
 	public int getTxn_id() {
@@ -43,8 +45,19 @@ public abstract class SildMsg {
 		this.data = data;
 	}
 
-	public static void main(String[] args) {
-
+	public String getMethod() {
+		return method;
 	}
 
+	public void setMethod(String method) {
+		this.method = method;
+	}
+
+	public String getHeader() {
+		return header;
+	}
+
+	public void setHeader(String header) {
+		this.header = header;
+	}
 }
