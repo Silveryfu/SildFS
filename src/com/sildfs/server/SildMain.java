@@ -70,6 +70,9 @@ public class SildMain implements Runnable {
 				// Start the listening socket
 				Socket clientSocket = listenSocket.accept();
 				SildHandler handler = new SildHandler(clientSocket);
+				
+				// Set the file directory
+				handler.setDir(this.getDir());
 
 				// Start handler for this client
 				pool.execute(handler);

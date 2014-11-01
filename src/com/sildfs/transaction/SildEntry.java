@@ -9,9 +9,9 @@ package com.sildfs.transaction;
 
 import com.sildfs.message.SildMsg;
 
-public class SildEntry extends SildMsg {
+public class SildEntry {
 
-	private String file_name;
+	private String file;
 	
 	public static void main(String[] args) {
 		

@@ -1,13 +1,16 @@
 package com.sildfs.server;
 
 import java.io.BufferedReader;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.PrintStream;
+import java.io.RandomAccessFile;
 import java.net.Socket;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 
 import com.sildfs.message.SildReq;
-import com.sildfs.message.*;
-
 
 /**
  * The client handler
@@ -19,6 +22,7 @@ public class SildHandler implements Runnable {
 
 	private Socket socket;
 	private BufferedReader reader;
+	private String dir;
 
 	public SildHandler(Socket socket) {
 		this.setSocket(socket);
@@ -36,24 +40,32 @@ public class SildHandler implements Runnable {
 			reader = new BufferedReader(new InputStreamReader(
 					socket.getInputStream()));
 
-			// Call receive; call respond
-			if (this.receive())
-				this.respond();
+			// Call receive
+			while (this.receive())
+				;
+
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 
 	public boolean receive() throws IOException {
-		// Read the header field
 		SildReq req = new SildReq();
+
+		// Read the header field
 		req.parseHeader(reader.readLine());
+
+		// Skip the blank line
+		reader.readLine();
+
+		// Read the data field
+		req.parseData(reader.readLine());
+
 		req.printAll();
-		
+		// Execute according to the method
 		String method = req.getMethod();
 		if (method.equals("READ")) {
-			
-
+			this.read(req.getData());
 		} else if (method.equals("NEW_TXN")) {
 
 		} else if (method.equals("WRITE")) {
@@ -74,23 +86,52 @@ public class SildHandler implements Runnable {
 				+ ":" + this.getSocket().getPort());
 	}
 
-	public void read() throws IOException {
+	public void read(String file_name) {
+		try {
+			RandomAccessFile read_file = new RandomAccessFile(this.getDir()
+					+ "/" + file_name, "r");
+			FileChannel inChannel = read_file.getChannel();
+			PrintStream out = new PrintStream(this.getSocket()
+					.getOutputStream(), true);
+
+			// Another candidate is to use MappedByteBuffer
+			int BUFFER_SIZE = 1024;
+			ByteBuffer buf = ByteBuffer.allocate(BUFFER_SIZE);
+			byte[] byte_array;
+
+			while (inChannel.read(buf) > 0) {
+				buf.flip();
+				byte_array = new byte[buf.limit()];
+				buf.get(byte_array);
+				out.write(byte_array);
+				buf.clear();
+			}
+
+			out.print("\r\n\r\n");
+
+			inChannel.close();
+			read_file.close();
+
+		} catch (FileNotFoundException fe) {
+			System.out.println("File not found.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void start_txn() {
 
 	}
 
-	public void start_txn() throws IOException {
+	public void write() {
 
 	}
 
-	public void write() throws IOException {
+	public void commit() {
 
 	}
 
-	public void commit() throws IOException {
-
-	}
-
-	public void abort() throws IOException {
+	public void abort() {
 
 	}
 
@@ -100,5 +141,13 @@ public class SildHandler implements Runnable {
 
 	public void setSocket(Socket socket) {
 		this.socket = socket;
+	}
+
+	public String getDir() {
+		return dir;
+	}
+
+	public void setDir(String dir) {
+		this.dir = dir;
 	}
 }

@@ -8,15 +8,13 @@ package com.sildfs.message;
  * over a high workload on the server when the stack memory can be filled up
  * possibly. Some tradeoff regarding this issue maybe play here in the future.
  * 
- * The SildReq class extends SildEntry, so that it may be put in the log without
- * casting
+ * The SildReq class extends SildEntry, so that up-casting can be done
+ * intuitively
  * 
  * @author dif
  */
 
-import com.sildfs.transaction.SildEntry;
-
-public class SildReq extends SildEntry {
+public class SildReq extends SildMsg {
 
 	private String header;
 	private String method;
@@ -24,13 +22,13 @@ public class SildReq extends SildEntry {
 	public SildReq() {
 	};
 
-	public SildReq(String raw_data) {
-		this.parseHeader(raw_data);
+	public SildReq(String raw_header) {
+		this.parseHeader(raw_header);
 	}
 
-	public void parseHeader(String raw_data) {
+	public void parseHeader(String raw_header) {
 		try {
-			String[] fields = raw_data.split(" ");
+			String[] fields = raw_header.split(" ");
 			this.setMethod(fields[0]);
 			this.setTxn_id(Integer.valueOf(fields[1]));
 			this.setSeq_num(Integer.valueOf(fields[2]));
@@ -40,9 +38,14 @@ public class SildReq extends SildEntry {
 		}
 	}
 
+	public void parseData(String raw_data) {
+		this.setData(raw_data);
+	}
+
 	public void printAll() {
 		System.out.println(this.getMethod() + "\n" + this.getTxn_id() + "\n"
-				+ this.getSeq_num() + "\n" + this.getData_length());
+				+ this.getSeq_num() + "\n" + this.getData_length() + "\n"
+				+ this.getData());
 	}
 
 	public static void main(String[] args) {
