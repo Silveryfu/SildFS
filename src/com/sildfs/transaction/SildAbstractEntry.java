@@ -2,6 +2,7 @@ package com.sildfs.transaction;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.io.Serializable;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -15,8 +16,9 @@ import java.util.concurrent.locks.ReentrantLock;
  * @author: dif
  */
 
-public abstract class SildAbstractEntry {
+public abstract class SildAbstractEntry implements Serializable {
 
+	private static final long serialVersionUID = 1L;
 	private int txn_id;
 	private int seq_num;
 	private String dir;
@@ -25,17 +27,7 @@ public abstract class SildAbstractEntry {
 	private ReentrantLock lock;
 	private File f;
 
-	private PrintStream out;
-
-	public abstract void execute();
-
-	public PrintStream getOut() {
-		return out;
-	}
-
-	public void setOut(PrintStream out) {
-		this.out = out;
-	}
+	public abstract void execute() throws Exception; 
 
 	public String getFile() {
 		return file;

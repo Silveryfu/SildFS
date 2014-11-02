@@ -1,9 +1,13 @@
 package com.sildfs.server;
 
 import java.io.BufferedReader;
-import java.io.FileNotFoundException;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.PrintStream;
 import java.net.Socket;
 import java.nio.file.Files;
@@ -12,6 +16,7 @@ import java.nio.file.Paths;
 
 import com.sildfs.message.SildReq;
 import com.sildfs.message.SildResp;
+import com.sildfs.transaction.SildAbstractEntry;
 import com.sildfs.transaction.SildLog;
 import com.sildfs.transaction.SildNewtxn;
 
@@ -80,6 +85,7 @@ public class SildHandler implements Runnable {
 			char[] data = new char[req.getData_length()];
 			int dataRead = reader.read(data);
 			req.parseData(new String(data));
+
 			// Skip the last \n
 			while (!reader.ready())
 				;
@@ -101,7 +107,11 @@ public class SildHandler implements Runnable {
 		}
 
 		String method = req.getMethod();
-		// Execute according to the method
+
+		/**
+		 * Execute according to the method; The error handling should be done in
+		 * each of these methods below
+		 */
 		if (method.equals("READ")) {
 			this.read(req);
 		} else if (method.equals("NEW_TXN")) {
@@ -128,30 +138,42 @@ public class SildHandler implements Runnable {
 			 */
 			Path path = Paths.get(this.getDir() + "/" + req.getData());
 			byte[] byte_file = Files.readAllBytes(path);
-			System.out.println(byte_file.length);
-			// Here response is only the header
-			SildResp resp = new SildResp("ACK", req.getTxn_id(),
-					req.getSeq_num(), 0, byte_file.length);
 
-			// Reply to the client
+			// Here response is only the header
+			SildResp resp = new SildResp("ACK", -1, -1, 0, byte_file.length);
+
+			// Reply to the client; header + content
 			out.print(resp.getMessage() + new String(byte_file));
 
 		} catch (Exception e) {
-			SildResp resp = new SildResp("ERROR", req.getTxn_id(),
-					req.getSeq_num(), 206);
+			SildResp resp = new SildResp("ERROR", -1, -1, 206);
 			out.print(resp.getMessage());
 		}
 	}
 
 	public void start_txn(SildReq req) {
-		// Generate a new transaction id
 		int txn_id = SildLog.getAvail_txn_id();
+		try {
+			// Generate a new transaction id
 
-		// Generate a SildEntry
-		SildNewtxn new_txn_entry = new SildNewtxn(SildLog.getAvail_txn_id(),
-				this.getDir(), req.getData(), out);
-		new_txn_entry.execute();
+			// Generate a SildEntry
+			SildNewtxn new_txn_entry = new SildNewtxn(txn_id, this.getDir(),
+					req.getData());
 
+			// Create a hidden folder for entry-logs
+			(new File(this.getDir() + "/." + txn_id)).mkdirs();
+			
+			// Serialize and store this entry, flush it to disk
+			recordEntry(txn_id, new_txn_entry);
+
+			// Respond to the client
+			SildResp resp = new SildResp("ACK", txn_id, 0);
+			out.print(resp.getMessage());
+		} catch (Exception e) {
+			SildResp resp = new SildResp("ERROR", txn_id, req.getSeq_num(), 205);
+			out.print(resp.getMessage());
+			e.printStackTrace();
+		}
 	}
 
 	public void write(SildReq req) {
@@ -164,6 +186,30 @@ public class SildHandler implements Runnable {
 
 	public void abort(SildReq req) {
 
+	}
+
+	public void recordEntry(int txn_id, SildAbstractEntry e) throws Exception {
+		// Create the object storing file
+		FileOutputStream fos = new FileOutputStream(this.getDir() + "/."
+				+ txn_id + "/" + e.getSeq_num());
+		ObjectOutputStream oos = new ObjectOutputStream(fos);
+		oos.writeObject(e);
+
+		// Flush to disk
+		oos.flush();
+		fos.flush();
+		fos.getFD().sync();
+
+		FileInputStream fis = new FileInputStream(this.getDir() + "/." + txn_id
+				+ "/" + e.getSeq_num());
+		ObjectInputStream ois = new ObjectInputStream(fis);
+
+		SildNewtxn s = (SildNewtxn) ois.readObject();
+
+		System.out.println("here");
+		s.execute();
+		
+		oos.close();
 	}
 
 	public Socket getSocket() {

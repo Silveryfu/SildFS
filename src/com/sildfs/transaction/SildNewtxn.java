@@ -2,28 +2,28 @@ package com.sildfs.transaction;
 
 import java.io.File;
 import java.io.PrintStream;
-import java.io.RandomAccessFile;
+import java.io.Serializable;
 
 import com.sildfs.message.SildResp;
 
-public class SildNewtxn extends SildAbstractEntry implements Runnable {
+public class SildNewtxn extends SildAbstractEntry implements Serializable {
 
+	private static final long serialVersionUID = 2241696188128158240L;
 	private boolean isnewfile;
 
 	public SildNewtxn() {
 
 	}
 
-	public SildNewtxn(int txn_id, String dir, String file, PrintStream out) {
+	public SildNewtxn(int txn_id, String dir, String file) {
 		this.setTxn_id(txn_id);
 		this.setSeq_num(0);
 		this.setDir(dir);
 		this.setFile(file);
-		this.setOut(out);
-
 	}
 
-	public void execute() {
+	public void execute() throws Exception {
+		System.out.println(this.getFile());
 		try {
 			this.setF(new File(this.getDir() + "/" + this.getFile()));
 
@@ -36,22 +36,10 @@ public class SildNewtxn extends SildAbstractEntry implements Runnable {
 			// Obtain the lock on this file; TOCHECK
 			obtainLocks(this.getF());
 
-			// Respond to the client
-			SildResp resp = new SildResp("ACK", this.getTxn_id(), 0);
-			this.getOut().print(resp.getMessage());
 		} catch (Exception e) {
-			SildResp resp = new SildResp("ERROR", this.getTxn_id(),
-					this.getSeq_num(), 205);
-			this.getOut().print(resp.getMessage());
-			e.printStackTrace();
-			try {
-				this.getChannel().close();
-			} catch (Exception e2) {
-				e2.printStackTrace();
-			}
-			// if it is a newly created file, remote it
 			if (this.isIsnewfile())
 				this.getF().delete();
+			throw new Exception();
 		}
 	}
 
@@ -63,20 +51,16 @@ public class SildNewtxn extends SildAbstractEntry implements Runnable {
 	}
 
 	// For unit test
-	public static void main(String[] args) {
-		SildNewtxn s1 = new SildNewtxn();
-		s1.setDir("/home/dif/docs");
-		s1.setFile("to");
-		
-		// Try to run to instance of this code and see the magic
-		System.out.println("success!");
-		while (true)
-			;
-	}
-	
-	public void run() {
-		execute();
-	}
+//	public static void main(String[] args) {
+//		SildNewtxn s1 = new SildNewtxn();
+//		s1.setDir("/home/dif/docs");
+//		s1.setFile("to");
+//
+//		// Try to run to instance of this code and see the magic
+//		System.out.println("success!");
+//		while (true)
+//			;
+//	}
 
 	public boolean isIsnewfile() {
 		return isnewfile;
