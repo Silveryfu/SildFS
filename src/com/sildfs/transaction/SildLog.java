@@ -13,7 +13,7 @@ public class SildLog {
 	 * The avain_txn_id that every get() will increase it by 1; No setter is given
 	 * for this integer to avoid misusage.
 	 */
-	private int avail_txn_id;
+	private static int avail_txn_id;
 
 	/* The location where the log is stores */
 	private String log_dir;
@@ -38,7 +38,7 @@ public class SildLog {
 		
 	}
 	
-	public synchronized int getAvail_txn_id() {
+	public static synchronized int getAvail_txn_id() {
 		return ++avail_txn_id;
 	}
 	

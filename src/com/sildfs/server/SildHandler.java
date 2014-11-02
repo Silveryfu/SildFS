@@ -5,13 +5,15 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.io.RandomAccessFile;
 import java.net.Socket;
-import java.nio.ByteBuffer;
-import java.nio.channels.FileChannel;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import com.sildfs.message.SildReq;
 import com.sildfs.message.SildResp;
+import com.sildfs.transaction.SildLog;
+import com.sildfs.transaction.SildNewtxn;
 
 /**
  * The client handler
@@ -23,6 +25,7 @@ public class SildHandler implements Runnable {
 
 	private Socket socket;
 	private BufferedReader reader;
+	private PrintStream out;
 	private String dir;
 
 	public SildHandler(Socket socket) {
@@ -37,9 +40,17 @@ public class SildHandler implements Runnable {
 				+ this.getSocket().getInetAddress() + ":"
 				+ this.getSocket().getPort());
 		try {
-			// Initialize the buffered reader
+			/**
+			 * Initialize the buffered reader; Force it to read in ISO-8859-1
+			 * 8-bit char ISO-8859-1 is known for preserver the binary stream
+			 */
 			reader = new BufferedReader(new InputStreamReader(
-					socket.getInputStream()));
+					socket.getInputStream(), "ISO-8859-1"));
+
+			/**
+			 * Initialize the output stream
+			 */
+			out = new PrintStream(this.getSocket().getOutputStream(), false);
 
 			// Call receive
 			while (this.receive())
@@ -52,27 +63,51 @@ public class SildHandler implements Runnable {
 
 	public boolean receive() throws IOException {
 		SildReq req = new SildReq();
+		try {
+			// Read the header field
+			while (!reader.ready())
+				;
+			req.parseHeader(reader.readLine());
 
-		// Read the header field
-		while(!reader.ready());
-		req.parseHeader(reader.readLine());
+			// Skip the blank line
+			while (!reader.ready())
+				;
+			reader.readLine();
 
-		// Skip the blank line
-		reader.readLine();
+			// Read the data field; TODO check if content length is true
+			while (!reader.ready())
+				;
+			char[] data = new char[req.getData_length()];
+			int dataRead = reader.read(data);
+			req.parseData(new String(data));
+			// Skip the last \n
+			while (!reader.ready())
+				;
+			reader.readLine();
 
-		// Read the data field
-		req.parseData(reader.readLine());
+			// If it is commit or abort message, skip one more
+			if (req.getMethod().equals("COMMIT")
+					|| req.getMethod().equals("ABORT")) {
+				while (!reader.ready())
+					;
+				reader.readLine();
+			}
 
-		req.printAll();
-		// Execute according to the method
-		//TODO this.start_txn() return a respond
+		} catch (Exception e) {
+			SildResp resp = new SildResp("ERROR", req.getTxn_id(),
+					req.getSeq_num(), 204);
+			out.print(resp.getMessage());
+			e.printStackTrace();
+		}
+
 		String method = req.getMethod();
+		// Execute according to the method
 		if (method.equals("READ")) {
-			this.read(req.getData());
+			this.read(req);
 		} else if (method.equals("NEW_TXN")) {
-			this.start_txn();
+			this.start_txn(req);
 		} else if (method.equals("WRITE")) {
-			this.write();
+
 		} else if (method.equals("COMMIT")) {
 
 		} else if (method.equals("ABORT")) {
@@ -84,61 +119,50 @@ public class SildHandler implements Runnable {
 		return true;
 	}
 
-	public void respond() throws IOException {
-		System.out.println("Responding to " + this.getSocket().getInetAddress()
-				+ ":" + this.getSocket().getPort());
-	}
-
-	public void read(String file_name) {
+	public void read(SildReq req) {
 		try {
-			SildResp respond = new SildResp();
-			
-			// Read the given file and output to the client
-			RandomAccessFile read_file = new RandomAccessFile(this.getDir()
-					+ "/" + file_name, "r");
-			PrintStream out = new PrintStream(this.getSocket()
-					.getOutputStream(), true);
+			/**
+			 * Read the given file and output to the client; throws file not
+			 * found error Read the entire file; Should change to File.seperator
+			 * here to provide compatibility
+			 */
+			Path path = Paths.get(this.getDir() + "/" + req.getData());
+			byte[] byte_file = Files.readAllBytes(path);
+			System.out.println(byte_file.length);
+			// Here response is only the header
+			SildResp resp = new SildResp("ACK", req.getTxn_id(),
+					req.getSeq_num(), 0, byte_file.length);
 
-			// Another candidate is to use MappedByteBuffer
-			int BUFFER_SIZE = 1024;
-			ByteBuffer buf = ByteBuffer.allocate(BUFFER_SIZE);
-			byte[] byte_array;
-			
-			// Obatain the file channel
-			FileChannel inChannel = read_file.getChannel();
-			while (inChannel.read(buf) > 0) {
-				buf.flip();
-				byte_array = new byte[buf.limit()];
-				buf.get(byte_array);
-				out.write(byte_array);
-				buf.clear();
-			}
+			// Reply to the client
+			out.print(resp.getMessage() + new String(byte_file));
 
-			out.print("\r\n\r\n");
-
-			inChannel.close();
-			read_file.close();
-
-		} catch (FileNotFoundException fe) {
-			System.out.println("File not found.");
 		} catch (Exception e) {
-			e.printStackTrace();
+			SildResp resp = new SildResp("ERROR", req.getTxn_id(),
+					req.getSeq_num(), 206);
+			out.print(resp.getMessage());
 		}
 	}
 
-	public void start_txn() {
+	public void start_txn(SildReq req) {
+		// Generate a new transaction id
+		int txn_id = SildLog.getAvail_txn_id();
+
+		// Generate a SildEntry
+		SildNewtxn new_txn_entry = new SildNewtxn(SildLog.getAvail_txn_id(),
+				this.getDir(), req.getData(), out);
+		new_txn_entry.execute();
 
 	}
 
-	public void write() {
+	public void write(SildReq req) {
 
 	}
 
-	public void commit() {
+	public void commit(SildReq req) {
 
 	}
 
-	public void abort() {
+	public void abort(SildReq req) {
 
 	}
 

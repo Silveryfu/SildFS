@@ -38,7 +38,6 @@ public class SildArgParser {
 					throw new SildUndefinedArgException(args[i]);
 				}
 			}
-
 			if (this.getDir() == null)
 				throw new SildNoDirectorySpecifiedException();
 
@@ -51,7 +50,8 @@ public class SildArgParser {
 
 		} catch (SildUndefinedArgException eu) {
 			System.out.println("Undefined argument: \"" + eu.getMessage()
-					+ "\" --> ignored.");
+					+ "\" --> Abort.");
+			System.exit(0);
 		} catch (SildNoDirectorySpecifiedException en) {
 			System.out
 					.println("Please specify the file directory (-dir [directory]) --> Abort.");

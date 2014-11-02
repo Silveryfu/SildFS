@@ -14,25 +14,22 @@ package com.sildfs.message;
  * @author dif
  */
 
-public class SildReq extends SildMsg {
+public class SildReq extends SildAbstractMsg {
 
 	public SildReq() {
 	};
 
-	public SildReq(String raw_header) {
+	public SildReq(String raw_header) throws Exception {
 		this.parseHeader(raw_header);
 	}
 
-	public void parseHeader(String raw_header) {
-		try {
-			String[] fields = raw_header.split(" ");
-			this.setMethod(fields[0]);
-			this.setTxn_id(Integer.valueOf(fields[1]));
-			this.setSeq_num(Integer.valueOf(fields[2]));
-			this.setData_length(Integer.valueOf(fields[3]));
-		} catch (Exception e) {
-			System.out.println("Wrong header format.");
-		}
+	public void parseHeader(String raw_header) throws Exception {
+		String[] fields = raw_header.split(" ");
+
+		this.setMethod(fields[0].toUpperCase());
+		this.setTxn_id(Integer.valueOf(fields[1]));
+		this.setSeq_num(Integer.valueOf(fields[2]));
+		this.setData_length(Integer.valueOf(fields[3]));
 	}
 
 	public void parseData(String raw_data) {

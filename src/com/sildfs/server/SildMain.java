@@ -188,7 +188,6 @@ public class SildMain implements Runnable {
 		}
 
 		// Start Sild service
-		sild.printParam();
 		sild.startService();
 	}
 }

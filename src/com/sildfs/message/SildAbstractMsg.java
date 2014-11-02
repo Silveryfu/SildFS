@@ -4,7 +4,7 @@ package com.sildfs.message;
  * 
  * @author: dif
  */
-public abstract class SildMsg {
+public abstract class SildAbstractMsg {
 
 	private String method;
 	private int txn_id;
