@@ -18,7 +18,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public abstract class SildAbstractEntry implements Serializable {
 
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = -2965180848659888333L;
 	private int txn_id;
 	private int seq_num;
 	private String dir;

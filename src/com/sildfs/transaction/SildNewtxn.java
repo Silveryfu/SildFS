@@ -23,7 +23,6 @@ public class SildNewtxn extends SildAbstractEntry implements Serializable {
 	}
 
 	public void execute() throws Exception {
-		System.out.println(this.getFile());
 		try {
 			this.setF(new File(this.getDir() + "/" + this.getFile()));
 
