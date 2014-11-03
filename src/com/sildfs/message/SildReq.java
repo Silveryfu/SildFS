@@ -1,5 +1,7 @@
 package com.sildfs.message;
 
+import com.sildfs.exception.SildWrongFormatException;
+
 /**
  * A request here contains one transaction from the client, this class convert
  * the request into certain fields, providing methods for each field; The reason

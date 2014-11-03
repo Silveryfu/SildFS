@@ -1,7 +1,7 @@
 package com.sildfs.server;
 
 /**
- * This file contains the trunk of sildfs. 
+ * This file contains the trunk of sildfs; As well as a recovery agent
  * 
  * @author: dif
  */
@@ -24,10 +24,10 @@ public class SildMain implements Runnable {
 	private int portNumber;
 	private String dir;
 
-	/* The default ip and port number, as specified by the sample client */
+	/* The default IP and port number, as specified by the sample client */
 	private static final String DEFAULT_IP = "127.0.0.1";
 	private static final int DEFAULT_PORT = 7896;
-	
+
 	/**
 	 * Use executor services, 'pool' for service thread, whose underlying
 	 * implementation will be CachedThreadPool for better thread resource
@@ -42,13 +42,16 @@ public class SildMain implements Runnable {
 	private SildLog sildlog;
 
 	public void startService() {
+		// Run the recovery agent
+		SildRecoveryAgent agent = new SildRecoveryAgent();
+
 		// Initialize the executor service
 		trunk = Executors.newSingleThreadExecutor();
 		pool = Executors.newCachedThreadPool();
 
 		// Initialize the SildLog
 		sildlog = new SildLog();
-		
+
 		// Start the listening service
 		trunk.execute(this);
 	}
@@ -80,7 +83,7 @@ public class SildMain implements Runnable {
 				// Start the listening socket
 				Socket clientSocket = listenSocket.accept();
 				SildHandler handler = new SildHandler(clientSocket);
-				
+
 				// Set the file directory
 				handler.setDir(this.getDir());
 
@@ -91,7 +94,11 @@ public class SildMain implements Runnable {
 			}
 		}
 	}
-
+	
+	class SildRecoveryAgent {
+		
+	}
+	
 	protected SildMain() {
 	}
 
@@ -150,7 +157,7 @@ public class SildMain implements Runnable {
 	public void setIp(String ip) {
 		this.ip = ip;
 	}
-	
+
 	public SildLog getSildlog() {
 		return sildlog;
 	}

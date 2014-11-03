@@ -2,6 +2,8 @@ package com.sildfs.transaction;
 
 import java.util.HashMap;
 
+import com.sildfs.message.SildReq;
+
 /**
  * Store the transaction in memory
  * 
@@ -10,6 +12,9 @@ import java.util.HashMap;
 
 public class SildTxn {
 	private SildNewtxn new_txn;
+	private SildReq old_commit;
+	private boolean committed;
+
 	private HashMap<Integer, SildData> data_list;
 	private int txn_id;
 
@@ -48,5 +53,21 @@ public class SildTxn {
 
 	public void setData_list(HashMap<Integer, SildData> data_list) {
 		this.data_list = data_list;
+	}
+	
+	public boolean isCommitted() {
+		return committed;
+	}
+
+	public void setCommitted(boolean committed) {
+		this.committed = committed;
+	}
+	
+	public SildReq getOld_commit() {
+		return old_commit;
+	}
+
+	public void setOld_commit(SildReq old_commit) {
+		this.old_commit = old_commit;
 	}
 }
