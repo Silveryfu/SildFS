@@ -10,6 +10,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -23,7 +25,7 @@ public class SildMain implements Runnable {
 	private String ip;
 	private int portNumber;
 	private String dir;
-	
+
 	private SildRecoveryAgent agent;
 
 	/* The default IP and port number, as specified by the sample client */
@@ -34,7 +36,7 @@ public class SildMain implements Runnable {
 	 * Use executor services, 'pool' for service thread, whose underlying
 	 * implementation will be CachedThreadPool for better thread resource
 	 * utilization; 'trunk' for listening thread, whose underlying imple-
-	 * mentation will be SingleThreadPool
+	 * mentation will be SingleThreadPool; 
 	 */
 	private ExecutorService pool, trunk;
 
@@ -47,7 +49,7 @@ public class SildMain implements Runnable {
 		// Run the recovery agent
 		this.setAgent(new SildRecoveryAgent(this.getDir()));
 		this.getAgent().recover();
-		
+
 		// Initialize the executor service
 		trunk = Executors.newSingleThreadExecutor();
 		pool = Executors.newCachedThreadPool();
@@ -80,6 +82,12 @@ public class SildMain implements Runnable {
 			return;
 		}
 
+		TimerTask t = new SildCollector(this.getDir());
+		
+		// Running the collector task every interval
+		Timer timer = new Timer(true);
+		timer.scheduleAtFixedRate(t, 5000, 15*60*1000);
+		
 		// TODO: handler the client side sudden disconnection here
 		while (true) {
 			try {
@@ -89,7 +97,7 @@ public class SildMain implements Runnable {
 
 				// Set the file directory
 				handler.setDir(this.getDir());
-				
+
 				handler.setAgent(this.getAgent());
 
 				// Start handler for this client
@@ -99,7 +107,7 @@ public class SildMain implements Runnable {
 			}
 		}
 	}
-	
+
 	protected SildMain() {
 	}
 
@@ -180,7 +188,7 @@ public class SildMain implements Runnable {
 	public void setAgent(SildRecoveryAgent agent) {
 		this.agent = agent;
 	}
-	
+
 	public static void main(String[] args) {
 
 		SildArgParser parser = new SildArgParser();
