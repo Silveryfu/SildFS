@@ -42,6 +42,7 @@ public class SildArgParser {
 				throw new SildNoDirectorySpecifiedException();
 
 			Path path = Paths.get(this.getDir());
+			
 			// If directory does not exist, create one
 			if (!Files.exists(path)) {
 				File new_dir = new File(this.getDir());

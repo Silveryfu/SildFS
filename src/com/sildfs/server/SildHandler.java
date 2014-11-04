@@ -15,7 +15,9 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import com.sildfs.message.SildReq;
 import com.sildfs.message.SildResp;
@@ -37,13 +39,16 @@ public class SildHandler implements Runnable {
 	private BufferedReader reader;
 	private PrintStream out;
 	private String dir;
+	private SildRecoveryAgent agent;
 
 	private static final int SOCKET_TIMEOUT = 120000;
 
 	// Every time a new file is created, a corresponding lock is generated
-	private static ConcurrentHashMap<String, ReentrantLock> file_locks;
+	private static ConcurrentHashMap<String, ReadWriteLock> file_locks;
 
 	private static ConcurrentHashMap<Integer, SildTxn> txn_list;
+
+	private static ConcurrentHashMap<Integer, Boolean> committed_txn;
 
 	// Initialize the static fields
 	static {
@@ -51,7 +56,10 @@ public class SildHandler implements Runnable {
 		txn_list = new ConcurrentHashMap<Integer, SildTxn>();
 
 		// Initialize the lock map
-		file_locks = new ConcurrentHashMap<String, ReentrantLock>();
+		file_locks = new ConcurrentHashMap<String, ReadWriteLock>();
+
+		// Initialize committed history
+		committed_txn = new ConcurrentHashMap<Integer, Boolean>();
 	}
 
 	public SildHandler(Socket socket) {
@@ -155,24 +163,44 @@ public class SildHandler implements Runnable {
 			 * found error Read the entire file; Should change to File.seperator
 			 * here to provide compatibility
 			 */
+			String file_name = req.getData();
+			ReadWriteLock rwlock = file_locks.get(file_name);
+			if (rwlock == null) {
+				File f = new File(this.getDir() + "/" + file_name);
+				if (f.exists() && !f.isDirectory())
+					file_locks.put(file_name, new ReentrantReadWriteLock());
+				else
+					throw new Exception();
+			}
+
+			rwlock = file_locks.get(file_name);
+
+			Lock rlock = rwlock.readLock();
+
+			rlock.lock();
 			Path path = Paths.get(this.getDir() + "/" + req.getData());
 			byte[] byte_file = Files.readAllBytes(path);
-
+			rlock.unlock();
+			
 			// Here response is only the header
 			SildResp resp = new SildResp("ACK", -1, -1, 0, byte_file.length);
 
 			// Reply to the client; header + content
 			out.print(resp.getMessage() + new String(byte_file));
-
 		} catch (Exception e) {
-			SildResp resp = new SildResp("ERROR", -1, -1, 206);
-			out.print(resp.getMessage());
+			try {
+				SildResp resp = new SildResp("ERROR", -1, -1, 206);
+				out.print(resp.getMessage());
+			} catch (Exception e2) {
+				e2.printStackTrace();
+			}
 		}
 	}
 
 	public void start_txn(SildReq req) {
 		// Generate a new transaction id
 		int txn_id = SildLog.getAvail_txn_id();
+
 		try {
 			// Create a hidden folder for entry-logs
 			(new File(this.getDir() + "/.TXN/.txn" + txn_id)).mkdirs();
@@ -205,6 +233,13 @@ public class SildHandler implements Runnable {
 		int txn_id = req.getTxn_id();
 		int seq_num = req.getSeq_num();
 		String data = req.getData();
+
+		if (committed_txn.get(txn_id) != null) {
+			// Send ACK to the client
+			SildResp resp = new SildResp("ERROR", txn_id, -1, 202);
+			out.print(resp.getMessage());
+			return;
+		}
 
 		try {
 			// Check if the transaction id is legal
@@ -239,12 +274,13 @@ public class SildHandler implements Runnable {
 			txn_list.get(txn_id).addData(seq_num, sild_data);
 
 			recordData(txn_id, seq_num, sild_data);
-			
+
 			// Check if there is an old committed, try commit again
-			if(txn_list.get(txn_id).isCommitted()) {
+			if (txn_list.get(txn_id).isCommitted()) {
 				executeOldCommit(txn_id);
-			};
-			
+			}
+			;
+
 		} catch (Exception e) {
 			SildResp resp = new SildResp("ERROR", txn_id, seq_num, 205);
 			out.print(resp.getMessage());
@@ -262,16 +298,14 @@ public class SildHandler implements Runnable {
 		int given_seq = 0;
 
 		try {
-			// Check if there is an old commit
-			if(txn_list.get(txn_id).isCommitted()) {
-				SildReq sildreq = txn_list.get(txn_id).getOld_commit();
-				if(seq_num != sildreq.getSeq_num()) {
-					SildResp resp = new SildResp("ERROR", txn_id, seq_num, 207);
-					out.print(resp.getMessage());
-					return;
-				}
+			// Check if it is already successfully committed
+			if (committed_txn.get(txn_id) != null) {
+				// Send ACK to the client
+				SildResp resp = new SildResp("ACK", txn_id, -1);
+				out.print(resp.getMessage());
+				return;
 			}
-			
+
 			// Check if the transaction id is legal
 			File f = new File(txn_log);
 			if (!f.exists() || !f.isDirectory()) {
@@ -279,6 +313,20 @@ public class SildHandler implements Runnable {
 				out.print(resp.getMessage());
 				return;
 			}
+
+			// Check if there is an old commit
+			if (txn_list.get(txn_id).isCommitted()) {
+				SildReq sildreq = txn_list.get(txn_id).getOld_commit();
+				if (seq_num != sildreq.getSeq_num()) {
+					SildResp resp = new SildResp("ERROR", txn_id, seq_num, 207);
+					out.print(resp.getMessage());
+					return;
+				}
+			}
+
+			SildTxn txn = txn_list.get(txn_id);
+			txn.setCommitted(true);
+			txn.setOld_commit(req);
 
 			// Check if there are missing packets which have lower sequence
 			// numbers than the largest existing one; If there are, ask for
@@ -324,20 +372,22 @@ public class SildHandler implements Runnable {
 		}
 
 		// If there is some packets missing, should abort committing
-		if (isMissing) {
-			SildTxn txn = txn_list.get(txn_id);
-			txn.setCommitted(true);
-			txn.setOld_commit(req);
+		if (isMissing)
 			return;
-		}
-		
+
+		/* Commit this transaction */
 		try {
-			// Commit this transaction
 			SildTxn txn = txn_list.get(txn_id);
 
 			// Execute the new transaction call
 			SildNewtxn new_txn = txn.getNew_txn();
 			new_txn.execute();
+
+			String file_name = new_txn.getFile();
+
+			// If this is a new file, create a lock on it
+			if (new_txn.isIsnewfile())
+				file_locks.put(file_name, new ReentrantReadWriteLock());
 
 			HashMap<Integer, SildData> data_list = txn.getData_list();
 
@@ -347,17 +397,37 @@ public class SildHandler implements Runnable {
 				text.append(data_list.get(i).getData());
 			}
 
+			// Lock the target file
+			Lock flock = file_locks.get(file_name).writeLock();
+			flock.lock();
+
+			if (committed_txn.get(txn_id) != null) {
+				flock.unlock();
+				// Send ACK to the client
+				SildResp resp = new SildResp("ACK", txn_id, -1);
+				out.print(resp.getMessage());
+				return;
+			}
+
 			// Update the file; flush to disk
 			File f = new_txn.getF();
 			FileOutputStream fos = new FileOutputStream(f, true);
 			fos.write(text.toString().getBytes());
 			fos.flush();
 			fos.getFD().sync();
+			fos.getFD().sync();
 			fos.close();
+
+			// Release the lock;
+			flock.unlock();
 
 			// Send ACK to the client
 			SildResp resp = new SildResp("ACK", txn_id, -1);
 			out.print(resp.getMessage());
+
+			// Set the committed list
+			committed_txn.put(txn_id, true);
+
 		} catch (Exception e) {
 			SildResp resp = new SildResp("ERROR", txn_id, seq_num, 205);
 			out.print(resp.getMessage());
@@ -414,6 +484,7 @@ public class SildHandler implements Runnable {
 		oos.flush();
 		fos.flush();
 		fos.getFD().sync();
+		fos.getFD().sync();
 		oos.close();
 	}
 
@@ -434,6 +505,7 @@ public class SildHandler implements Runnable {
 		// Flush to disk
 		oos.flush();
 		fos.flush();
+		fos.getFD().sync();
 		fos.getFD().sync();
 
 		// FileInputStream fis = new FileInputStream(this.getDir() + "/." +
@@ -461,9 +533,26 @@ public class SildHandler implements Runnable {
 		}
 		path.delete();
 	}
-	
+
 	public void executeOldCommit(int txn_id) {
 		commit(txn_list.get(txn_id).getOld_commit());
+	}
+
+	public static ConcurrentHashMap<String, ReadWriteLock> getFile_locks() {
+		return file_locks;
+	}
+
+	public static void setFile_locks(
+			ConcurrentHashMap<String, ReadWriteLock> file_locks) {
+		SildHandler.file_locks = file_locks;
+	}
+
+	public static ConcurrentHashMap<Integer, SildTxn> getTxn_list() {
+		return txn_list;
+	}
+
+	public static void setTxn_list(ConcurrentHashMap<Integer, SildTxn> txn_list) {
+		SildHandler.txn_list = txn_list;
 	}
 
 	public Socket getSocket() {
@@ -480,5 +569,13 @@ public class SildHandler implements Runnable {
 
 	public void setDir(String dir) {
 		this.dir = dir;
+	}
+
+	public SildRecoveryAgent getAgent() {
+		return agent;
+	}
+
+	public void setAgent(SildRecoveryAgent agent) {
+		this.agent = agent;
 	}
 }

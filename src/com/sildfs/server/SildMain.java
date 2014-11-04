@@ -23,6 +23,8 @@ public class SildMain implements Runnable {
 	private String ip;
 	private int portNumber;
 	private String dir;
+	
+	private SildRecoveryAgent agent;
 
 	/* The default IP and port number, as specified by the sample client */
 	private static final String DEFAULT_IP = "127.0.0.1";
@@ -43,8 +45,9 @@ public class SildMain implements Runnable {
 
 	public void startService() {
 		// Run the recovery agent
-		SildRecoveryAgent agent = new SildRecoveryAgent();
-
+		this.setAgent(new SildRecoveryAgent(this.getDir()));
+		this.getAgent().recover();
+		
 		// Initialize the executor service
 		trunk = Executors.newSingleThreadExecutor();
 		pool = Executors.newCachedThreadPool();
@@ -86,6 +89,8 @@ public class SildMain implements Runnable {
 
 				// Set the file directory
 				handler.setDir(this.getDir());
+				
+				handler.setAgent(this.getAgent());
 
 				// Start handler for this client
 				pool.execute(handler);
@@ -95,32 +100,28 @@ public class SildMain implements Runnable {
 		}
 	}
 	
-	class SildRecoveryAgent {
-		
-	}
-	
 	protected SildMain() {
 	}
 
-	SildMain(String dir) {
+	public SildMain(String dir) {
 		this.setIp(DEFAULT_IP);
 		this.setPortNumber(DEFAULT_PORT);
 		this.setDir(dir);
 	}
 
-	SildMain(int portNumber, String dir) {
+	public SildMain(int portNumber, String dir) {
 		this.setIp(DEFAULT_IP);
 		this.setPortNumber(portNumber);
 		this.setDir(dir);
 	}
 
-	SildMain(String ip, String dir) {
+	public SildMain(String ip, String dir) {
 		this.setIp(ip);
 		this.setPortNumber(DEFAULT_PORT);
 		this.setDir(dir);
 	}
 
-	SildMain(String ip, int portNumber, String dir) {
+	public SildMain(String ip, int portNumber, String dir) {
 		this.setIp(ip);
 		this.setPortNumber(portNumber);
 		this.setDir(dir);
@@ -172,6 +173,14 @@ public class SildMain implements Runnable {
 		System.out.println(this.getDir());
 	}
 
+	public SildRecoveryAgent getAgent() {
+		return agent;
+	}
+
+	public void setAgent(SildRecoveryAgent agent) {
+		this.agent = agent;
+	}
+	
 	public static void main(String[] args) {
 
 		SildArgParser parser = new SildArgParser();

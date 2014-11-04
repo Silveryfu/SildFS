@@ -19,6 +19,7 @@ public class SildTxn {
 	private int txn_id;
 
 	public SildTxn() {
+		this.setData_list(new HashMap<Integer, SildData>());
 	}
 
 	public SildTxn(int txn_id, SildNewtxn new_txn) {
