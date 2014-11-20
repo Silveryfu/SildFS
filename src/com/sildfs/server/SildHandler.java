@@ -434,12 +434,12 @@ public class SildHandler implements Runnable {
 			out.print(resp.getMessage());
 			e.printStackTrace();
 		}
-
-		try {
-			clear_log(txn_id);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+		
+//		try {
+//			clear_log(txn_id);
+//		} catch (Exception e) {
+//			e.printStackTrace();
+//		}
 	}
 
 	public void abort(SildReq req) {

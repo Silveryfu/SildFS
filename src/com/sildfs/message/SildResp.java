@@ -28,7 +28,6 @@ public class SildResp {
 	}
 
 	public SildResp() {
-
 	}
 
 	// For ACK and ASK_RESEND
