@@ -1,35 +1,27 @@
 import com.sildfs.server.SildMain;
 import com.sildfs.tool.SildArgParser;
+import com.sildfs.tool.SildConfReader;
 
 /**
- * A wrapper for SildFS
+ * A wrapper for SildFS primary server It uses SildArgParser to read the input
+ * parameters for the server; Uses the SildConfReader to read the primary.txt
+ * file to set other parameters for primary server
  * 
  * @author dif
  */
 
 public class server {
 	public static void main(String[] args) {
-		 SildArgParser parser = new SildArgParser();
-		
-		 // Parse input arguments
-		 parser.parse(args);
-		 String dir = parser.getDir();
-		 String ip = parser.getIp();
-		 int port = parser.getPort();
-		
-		 // Enumerate the possibilities, setting up server parameters
-		 SildMain sild;
-		 if (ip == null && port == 0) {
-		 sild = new SildMain(dir);
-		 } else if (ip == null && port != 0) {
-		 sild = new SildMain(port, dir);
-		 } else if (port == 0 && ip != null) {
-		 sild = new SildMain(ip, dir);
-		 } else {
-		 sild = new SildMain(ip, port, dir);
-		 }
-		
-		 // Start Sild service
-		 sild.startService();
+		SildArgParser arg_parser = new SildArgParser();
+		SildConfReader conf_reader = new SildConfReader();
+		SildMain sild;
+
+		arg_parser.parse(args);
+		conf_reader.read(arg_parser.getPrimary());
+
+		sild = new SildMain(conf_reader.getIp(), conf_reader.getPort(),
+				arg_parser.getDir());
+
+		sild.printParam();
 	}
 }

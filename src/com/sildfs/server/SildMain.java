@@ -1,8 +1,10 @@
 package com.sildfs.server;
 
 /**
- * This file contains the trunk of sildfs; As well as a recovery agent
- * 
+ * This file contains the trunk of SildFS; It can be both a primary server 
+ * or a backup server wrapping up the client handler, replica agent, recovery
+ * agent.
+ *  
  * @author: dif
  */
 
@@ -20,13 +22,17 @@ import com.sildfs.transaction.SildLog;
 
 public class SildMain implements Runnable {
 
+	/* Server identification */
+	private boolean isReplica;
+
 	/* Server parameters */
 	private ServerSocket listenSocket;
 	private String ip;
 	private int portNumber;
 	private String dir;
 
-	private SildRecoveryAgent agent;
+	private SildRecoveryAgent recov_agent;
+	private SildPeerAgent peer_agent;
 
 	/* The default IP and port number, as specified by the sample client */
 	private static final String DEFAULT_IP = "127.0.0.1";
@@ -36,12 +42,12 @@ public class SildMain implements Runnable {
 	 * Use executor services, 'pool' for service thread, whose underlying
 	 * implementation will be CachedThreadPool for better thread resource
 	 * utilization; 'trunk' for listening thread, whose underlying imple-
-	 * mentation will be SingleThreadPool; 
+	 * mentation will be SingleThreadPool;
 	 */
 	private ExecutorService pool, trunk;
 
 	/**
-	 * The transactional log
+	 * The transaction log
 	 */
 	private SildLog sildlog;
 
@@ -83,12 +89,12 @@ public class SildMain implements Runnable {
 		}
 
 		TimerTask t = new SildCollector(this.getDir());
-		
+
 		// Running the collector task every interval
 		Timer timer = new Timer(true);
-		timer.scheduleAtFixedRate(t, 5000, 15*60*1000);
-		
-		// TODO: handler the client side sudden disconnection here
+		timer.scheduleAtFixedRate(t, 5000, 15 * 60 * 1000);
+
+		// TODO: handle the client side sudden disconnection here
 		while (true) {
 			try {
 				// Start the listening socket
@@ -175,18 +181,26 @@ public class SildMain implements Runnable {
 		this.sildlog = sildlog;
 	}
 
-	protected void printParam() {
+	public void printParam() {
 		System.out.println(this.getIp());
 		System.out.println(this.getPortNumber());
 		System.out.println(this.getDir());
 	}
 
 	public SildRecoveryAgent getAgent() {
-		return agent;
+		return recov_agent;
 	}
 
 	public void setAgent(SildRecoveryAgent agent) {
-		this.agent = agent;
+		this.recov_agent = agent;
+	}
+	
+	public boolean isReplica() {
+		return isReplica;
+	}
+
+	public void setReplica(boolean isReplica) {
+		this.isReplica = isReplica;
 	}
 
 	public static void main(String[] args) {

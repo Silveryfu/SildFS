@@ -12,14 +12,16 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.sildfs.exception.SildInvalidIpException;
+import com.sildfs.exception.SildDepracatedException;
 import com.sildfs.exception.SildNoDirectorySpecifiedException;
+import com.sildfs.exception.SildNoPrimaryConfFoundException;
 import com.sildfs.exception.SildUndefinedArgException;
 
 public class SildArgParser {
 	private String ip;
 	private String dir;
 	private int port;
+	private String primary;
 
 	public SildArgParser() {
 
@@ -30,19 +32,27 @@ public class SildArgParser {
 			for (int i = 0; i < args.length; i = i + 2) {
 				if (args[i].equals("-ip")) {
 					this.setIp(checkIp(args[i + 1]));
+					throw new SildDepracatedException();
 				} else if (args[i].equals("-port")) {
 					this.setPort(checkPort(Integer.valueOf(args[i + 1])));
+					throw new SildDepracatedException();
 				} else if (args[i].equals("-dir")) {
 					this.setDir(args[i + 1]);
+				} else if (args[i].equals("-primary")) {
+					this.setPrimary(args[i + 1]);
 				} else {
 					throw new SildUndefinedArgException(args[i]);
 				}
 			}
+
+			if (this.getPrimary() == null)
+				throw new SildNoPrimaryConfFoundException();
+
 			if (this.getDir() == null)
 				throw new SildNoDirectorySpecifiedException();
 
 			Path path = Paths.get(this.getDir());
-			
+
 			// If directory does not exist, create one
 			if (!Files.exists(path)) {
 				File new_dir = new File(this.getDir());
@@ -57,9 +67,15 @@ public class SildArgParser {
 			System.out
 					.println("Please specify the file directory (-dir [directory]) --> Abort.");
 			System.exit(0);
+		} catch(SildNoPrimaryConfFoundException pe) {
+			System.out.println("No primary.txt found --> Abort.");
+			System.exit(0);
 		} catch (InvalidPathException ep) {
 			System.out.println("Invalid directory path --> Abort.");
 			System.exit(0);
+		} catch (SildDepracatedException de) {
+			System.out
+					.println("Wanning: The ip and port parameters have been depracted --> Ignored.");
 		} catch (Exception e) {
 			System.out.println("Bad input --> Abort.");
 			e.printStackTrace();
@@ -127,5 +143,13 @@ public class SildArgParser {
 
 	public void setDir(String dir) {
 		this.dir = dir;
+	}
+
+	public String getPrimary() {
+		return primary;
+	}
+
+	public void setPrimary(String primary) {
+		this.primary = primary;
 	}
 }
