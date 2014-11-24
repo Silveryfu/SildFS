@@ -14,38 +14,60 @@ public class server {
 	public static void main(String[] args) {
 		SildArgParser arg_parser = new SildArgParser();
 		SildConfReader conf_reader = new SildConfReader();
-		SildMain sild_primary, sild_replica;
+		SildMain sild;
 
 		// Parse input arguments
 		arg_parser.parse(args);
 
-		// Start a SildFS from primary.txt
-		if (arg_parser.isFresh()) {
-			arg_parser.checkFresh();
+		if (arg_parser.isPrimary()) {
+			/* Start a primary server.
+			 * Do sanity check for primary.txt
+			 */
+			arg_parser.checkFromFile();
 
 			// Read primary configuration file
-			conf_reader.read(arg_parser.getPrimary());
+			conf_reader.read(arg_parser.getPrimaryFile());
 
 			// Create a SildFS primary server
-			sild_primary = new SildMain(conf_reader.getIp(),
+			sild = new SildMain(conf_reader.getIp(),
 					conf_reader.getPort(), arg_parser.getDir());
-			sild_primary.setReplica(false);
+			sild.setReplica(false);
 
-			// Start a server along with a replica
-			if (arg_parser.isReplicated()) {
-				arg_parser.checkReplica();
-				
-				
-				sild_primary.startService();
-				
+			// Start service
+			sild.startService();
+
+		} else if (arg_parser.isReplica()) {
+			/* Start a replica server.
+			 * Do sanity check for primary.txt
+			 */
+			arg_parser.checkFromFile();
+			arg_parser.checkReplica();
+			
+			// Start a server from command line input
+			String dir = arg_parser.getDir();
+			String ip = arg_parser.getIp();
+			int port = arg_parser.getPort();
+
+			if (ip == null && port == 0) {
+				sild = new SildMain(dir);
+			} else if (ip == null && port != 0) {
+				sild = new SildMain(port, dir);
+			} else if (port == 0 && ip != null) {
+				sild = new SildMain(ip, dir);
 			} else {
-				// Start service without replica
-				sild_primary.startService();
+				sild = new SildMain(ip, port, dir);
 			}
+			sild.startService();
 		} else if (arg_parser.isReboot()) {
-			// Start a rebooted server
+			/* Start a rebooted server.
+			 * Do sanity check for primary.txt
+			 */
+			arg_parser.checkFromFile();
 
 		} else {
+			/* Start a server without replication.
+			 * Do sanity check for primary.txt
+			 */
 			arg_parser.checkPlain();
 			// Start a server from command line input
 			String dir = arg_parser.getDir();
@@ -53,7 +75,6 @@ public class server {
 			int port = arg_parser.getPort();
 
 			// Enumerate the possibilities, setting up server parameters
-			SildMain sild;
 			if (ip == null && port == 0) {
 				sild = new SildMain(dir);
 			} else if (ip == null && port != 0) {

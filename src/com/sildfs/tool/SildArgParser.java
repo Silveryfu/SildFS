@@ -22,12 +22,14 @@ public class SildArgParser {
 	private String ip;
 	private String dir;
 	private int port;
-	private String primary;
+	private String primaryFile;
 
 	// Flags for different server types
 	private boolean isReplicated;
+	private boolean isReplica;
+	private boolean isPrimary;
 	private boolean isReboot;
-	private boolean isFresh;
+	private boolean isFromFile;
 
 	// The IP, port number, and directory for the replicas
 	private String Rip;
@@ -47,16 +49,19 @@ public class SildArgParser {
 					this.setPort(checkPort(Integer.valueOf(args[i + 1])));
 				} else if (args[i].equals("-dir")) {
 					this.setDir(args[i + 1]);
-				} else if (args[i].equals("-p")) {
-					this.setPrimary(args[i + 1]);
 				} else if (args[i].equals("-f")) {
-					this.setFresh(true);
+					this.setPrimaryFile(args[i + 1]);
+				} else if (args[i].equals("-p")) {
+					this.setPrimary(true);
 					--i;
 				} else if (args[i].equals("-b")) {
 					this.setReboot(true);
 					--i;
-				} else if (args[i].equals("-r")) {
+				} else if (args[i].equals("-rp")) {
 					this.setReplicated(true);
+					--i;
+				} else if (args[i].equals("-r")) {
+					this.setReplica(true);
 					--i;
 				} else if (args[i].equals("-Rip")) {
 					this.setRip(checkIp(args[i + 1]));
@@ -87,16 +92,11 @@ public class SildArgParser {
 	// Check if the replica setup is descend
 	public void checkReplica() {
 		try {
-			if (this.getRdir() == null && this.isReplicated())
+			if (this.getIp() == null || this.getPort() == 0
+					|| this.getDir() == null)
 				throw new SildInvalidReplicaException();
 
-			if (this.getRip() == null && isReplicated())
-				throw new SildInvalidReplicaException();
-
-			if (this.getRport() == 0 && isReplicated())
-				throw new SildInvalidReplicaException();
-
-			Path path = Paths.get(this.getRdir());
+			Path path = Paths.get(this.getDir());
 
 			// If directory does not exist, create one
 			if (!Files.exists(path)) {
@@ -113,9 +113,9 @@ public class SildArgParser {
 		}
 	}
 
-	public void checkFresh() {
+	public void checkFromFile() {
 		try {
-			if (this.getPrimary() == null)
+			if (this.getPrimaryFile() == null)
 				throw new SildNoPrimaryConfFoundException();
 
 			if (this.getDir() == null)
@@ -225,14 +225,6 @@ public class SildArgParser {
 		this.dir = dir;
 	}
 
-	public String getPrimary() {
-		return primary;
-	}
-
-	public void setPrimary(String primary) {
-		this.primary = primary;
-	}
-
 	public String getRip() {
 		return Rip;
 	}
@@ -273,11 +265,35 @@ public class SildArgParser {
 		this.isReboot = isReboot;
 	}
 
-	public boolean isFresh() {
-		return isFresh;
+	public boolean isFromFile() {
+		return isFromFile;
 	}
 
-	public void setFresh(boolean isFresh) {
-		this.isFresh = isFresh;
+	public void setFromFile(boolean isFromFile) {
+		this.isFromFile = isFromFile;
+	}
+
+	public boolean isReplica() {
+		return isReplica;
+	}
+
+	public void setReplica(boolean isReplica) {
+		this.isReplica = isReplica;
+	}
+
+	public boolean isPrimary() {
+		return isPrimary;
+	}
+
+	public void setPrimary(boolean isPrimary) {
+		this.isPrimary = isPrimary;
+	}
+
+	public void setPrimaryFile(String file) {
+		this.primaryFile = file;
+	}
+
+	public String getPrimaryFile() {
+		return this.primaryFile;
 	}
 }
