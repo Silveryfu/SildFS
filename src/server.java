@@ -48,15 +48,9 @@ public class server {
 			String ip = arg_parser.getIp();
 			int port = arg_parser.getPort();
 
-			if (ip == null && port == 0) {
-				sild = new SildMain(dir);
-			} else if (ip == null && port != 0) {
-				sild = new SildMain(port, dir);
-			} else if (port == 0 && ip != null) {
-				sild = new SildMain(ip, dir);
-			} else {
-				sild = new SildMain(ip, port, dir);
-			}
+			sild = new SildMain(ip, port, dir);
+			sild.setReplica(true);
+			
 			sild.startService();
 		} else if (arg_parser.isReboot()) {
 			/* Start a rebooted server.

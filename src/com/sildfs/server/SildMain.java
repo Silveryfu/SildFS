@@ -33,7 +33,7 @@ public class SildMain implements Runnable {
 	private String dir;
 
 	private SildRecoveryAgent recov_agent;
-	private SildPeerAgent peer_agent;
+	private SildReplicaAgent peer_agent;
 
 	/* The default IP and port number, as specified by the sample client */
 	private static final String DEFAULT_IP = "127.0.0.1";
@@ -66,6 +66,10 @@ public class SildMain implements Runnable {
 
 		// Start the listening service
 		trunk.execute(this);
+	}
+	
+	public void startPeerAgent() {
+
 	}
 
 	public void run() {
@@ -142,6 +146,12 @@ public class SildMain implements Runnable {
 		this.setDir(dir);
 	}
 
+	public SildMain(String ip, int portNumber, String dir, String primaryIp, int primaryPort) {
+		this.setIp(ip);
+		this.setPortNumber(portNumber);
+		this.setDir(dir);
+	}
+	
 	public String getDir() {
 		return dir;
 	}
