@@ -8,6 +8,8 @@ package com.sildfs.server;
  * start to replicate its server content. Every client request from now on
  * will be replicated before replying an acknowledgment.
  * 
+ * SildServerAgent is its counterpart.
+ * 
  * @author dif
  */
 
