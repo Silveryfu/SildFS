@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import com.sildfs.tool.SildArgParser;
+import com.sildfs.tool.SildConfReader;
 import com.sildfs.transaction.SildLog;
 
 public class SildMain implements Runnable {
@@ -204,28 +205,17 @@ public class SildMain implements Runnable {
 	}
 
 	public static void main(String[] args) {
+		SildArgParser arg_parser = new SildArgParser();
+		SildConfReader conf_reader = new SildConfReader();
+		SildMain primary_sild, replica_sild;
+		
+		arg_parser.parse(args);
+		conf_reader.read(arg_parser.getPrimary());
 
-		SildArgParser parser = new SildArgParser();
-
-		// Parse input arguments
-		parser.parse(args);
-		String dir = parser.getDir();
-		String ip = parser.getIp();
-		int port = parser.getPort();
-
-		// Enumerate the possibilities, setting up server parameters
-		SildMain sild;
-		if (ip == null && port == 0) {
-			sild = new SildMain(dir);
-		} else if (ip == null && port != 0) {
-			sild = new SildMain(port, dir);
-		} else if (port == 0 && ip != null) {
-			sild = new SildMain(ip, dir);
-		} else {
-			sild = new SildMain(ip, port, dir);
-		}
-
-		// Start Sild service
-		sild.startService();
+		primary_sild = new SildMain(conf_reader.getIp(), conf_reader.getPort(),
+				arg_parser.getDir());
+		
+		primary_sild.printParam();
+//		sild.startService();
 	}
 }
