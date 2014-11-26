@@ -17,6 +17,7 @@ import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.sildfs.replica.SildReplicaAgent;
 import com.sildfs.tool.SildArgParser;
 import com.sildfs.tool.SildConfReader;
 import com.sildfs.transaction.SildLog;
@@ -32,8 +33,12 @@ public class SildMain implements Runnable {
 	private int portNumber;
 	private String dir;
 
+	/**
+	 * SildRecoveryAgent is responsible for recovery routine;
+	 * SildReplicaAgent is only valid when current server is a replica server;
+	 */
 	private SildRecoveryAgent recov_agent;
-	private SildReplicaAgent peer_agent;
+	private SildReplicaAgent replica_agent;
 
 	/* The default IP and port number, as specified by the sample client */
 	private static final String DEFAULT_IP = "127.0.0.1";
@@ -45,12 +50,19 @@ public class SildMain implements Runnable {
 	 * utilization; 'trunk' for listening thread, whose underlying imple-
 	 * mentation will be SingleThreadPool;
 	 */
-	private ExecutorService pool, trunk;
+	private ExecutorService pool, trunk, replica;
 
 	/**
 	 * The transaction log
 	 */
 	private SildLog sildlog;
+	
+	/**
+	 * These two attributes are only meaningful when the current server is
+	 * a replica server
+	 */
+	private String primary_ip;
+	private int primary_port;
 
 	public void startService() {
 		// Run the recovery agent
@@ -68,10 +80,24 @@ public class SildMain implements Runnable {
 		trunk.execute(this);
 	}
 	
-	public void startPeerAgent() {
-
+	public void startReplicaService() {
+		// Initialize the executor service for replica agent thread
+		replica = Executors.newSingleThreadExecutor();
+		
+		// Initialize the replica agent
+		replica_agent = new SildReplicaAgent();
+		
+		replica_agent.setIp(this.getIp());
+		replica_agent.setPrimary_ip(this.getPrimary_ip());
+		replica_agent.setPrimary_port(this.getPrimary_port());
+		
+		replica.execute(replica_agent);
 	}
-
+	
+	public void startServerAgent() {
+		
+	}
+	
 	public void run() {
 		try {
 			/**
@@ -212,6 +238,22 @@ public class SildMain implements Runnable {
 
 	public void setReplica(boolean isReplica) {
 		this.isReplica = isReplica;
+	}
+
+	public String getPrimary_ip() {
+		return primary_ip;
+	}
+
+	public void setPrimary_ip(String primary_ip) {
+		this.primary_ip = primary_ip;
+	}
+
+	public int getPrimary_port() {
+		return primary_port;
+	}
+
+	public void setPrimary_port(int primary_port) {
+		this.primary_port = primary_port;
 	}
 
 	public static void main(String[] args) {

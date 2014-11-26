@@ -29,7 +29,8 @@ import com.sildfs.transaction.SildNewtxn;
 import com.sildfs.transaction.SildTxn;
 
 /**
- * The client handler;
+ * The client handler; Handles client's new_txn, commit, abort, write, read as
+ * well as replica's initial request message
  * 
  * @author dif
  */
@@ -40,7 +41,8 @@ public class SildHandler implements Runnable {
 	private BufferedReader reader;
 	private PrintStream out;
 	private String dir;
-	private SildRecoveryAgent agent;
+	private SildRecoveryAgent recov_agent;
+	private SildPrimaryAgent primary_agent;
 
 	private static final int SOCKET_TIMEOUT = 120000;
 
@@ -150,6 +152,8 @@ public class SildHandler implements Runnable {
 			this.commit(req);
 		} else if (method.equals("ABORT")) {
 			this.abort(req);
+		} else if (method.equals("NEW_REPLICA")) {
+			this.new_replica(req);
 		} else {
 			System.out.println("Un-understandable method.");
 		}
@@ -434,12 +438,12 @@ public class SildHandler implements Runnable {
 			out.print(resp.getMessage());
 			e.printStackTrace();
 		}
-		
-//		try {
-//			clear_log(txn_id);
-//		} catch (Exception e) {
-//			e.printStackTrace();
-//		}
+
+		// try {
+		// clear_log(txn_id);
+		// } catch (Exception e) {
+		// e.printStackTrace();
+		// }
 	}
 
 	public void abort(SildReq req) {
@@ -451,8 +455,15 @@ public class SildHandler implements Runnable {
 		} catch (Exception e) {
 			SildResp resp = new SildResp("ERROR", txn_id, -1, 205);
 			out.print(resp.getMessage());
-			e.printStackTrace();
 		}
+	}
+
+	public void new_replica(SildReq req) {
+		String[] ip_port = req.getData().split(" ");
+		primary_agent = new SildPrimaryAgent();
+		primary_agent.setReplica_ip(ip_port[0]);
+		primary_agent.setReplica_port(Integer.valueOf(ip_port[1]));
+		primary_agent.foo();
 	}
 
 	public void clear_log(int txn_id) throws Exception {
@@ -573,10 +584,10 @@ public class SildHandler implements Runnable {
 	}
 
 	public SildRecoveryAgent getAgent() {
-		return agent;
+		return recov_agent;
 	}
 
 	public void setAgent(SildRecoveryAgent agent) {
-		this.agent = agent;
+		this.recov_agent = agent;
 	}
 }

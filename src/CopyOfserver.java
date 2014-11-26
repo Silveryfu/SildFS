@@ -10,7 +10,7 @@ import com.sildfs.tool.SildConfReader;
  * @author dif
  */
 
-public class server {
+public class CopyOfserver {
 	public static void main(String[] args) {
 		SildArgParser arg_parser = new SildArgParser();
 		SildConfReader conf_reader = new SildConfReader();

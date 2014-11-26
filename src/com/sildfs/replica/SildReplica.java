@@ -4,6 +4,7 @@ import java.net.ServerSocket;
 import java.util.concurrent.ExecutorService;
 
 import com.sildfs.server.SildRecoveryAgent;
+import com.sildfs.server.SildPrimaryAgent;
 import com.sildfs.transaction.SildLog;
 
 /**
@@ -22,7 +23,7 @@ public class SildReplica {
 	private String dir;
 	
 	private SildRecoveryAgent recov_agent;
-	private SildServerAgent server_agent;
+	private SildPrimaryAgent server_agent;
 	
 	/* The default IP and port number */
 	private static final String DEFAULT_IP = "127.0.0.1";
