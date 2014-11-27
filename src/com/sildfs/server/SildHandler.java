@@ -116,7 +116,7 @@ public class SildHandler implements Runnable {
 
 			req.parseData(new String(data));
 
-			// Skip the last \n
+			// Skip the last
 			reader.readLine();
 
 			// If it is commit or abort message, skip one more

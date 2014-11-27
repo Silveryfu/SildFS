@@ -48,11 +48,10 @@ public class SildPrimaryAgent implements Runnable {
 
 				// If this transaction is already committed
 				if (!commit_mark.exists()) {
-					System.out.println("jackie");
+//					System.out.println("Jackie");
 					continue;
 				}
 
-				System.out.println("jack");
 				Integer commit_order = null;
 				File[] txn_files = listOfFiles[i].listFiles();
 				Arrays.sort(txn_files);

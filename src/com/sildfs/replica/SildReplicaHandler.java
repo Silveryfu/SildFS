@@ -6,10 +6,12 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.Map;
+import java.util.TreeMap;
 
 import com.sildfs.transaction.SildData;
 import com.sildfs.transaction.SildNewtxn;
+import com.sildfs.transaction.SildTxn;
 
 /**
  * A handler for the replica replication workload
@@ -22,14 +24,18 @@ public class SildReplicaHandler implements Runnable {
 	private Socket primary_so;
 	private String dir;
 	private String log_dir;
-	private HashMap<Integer, Integer> commit_order;
+	private TreeMap<Integer, Integer> commit_order;
+	private HashMap<Integer, SildTxn> txn_list;
 
 	public void run() {
 		try {
 			File txn_dir = null;
 			int seq_counter = 0;
 			int tid = -1;
-			commit_order = new HashMap<Integer, Integer>();
+			int order = -1;
+			boolean isExist = false;
+			commit_order = new TreeMap<Integer, Integer>();
+			txn_list = new HashMap<Integer, SildTxn>();
 			long startTime = System.currentTimeMillis();
 
 			// Obtain input stream
@@ -40,16 +46,21 @@ public class SildReplicaHandler implements Runnable {
 			while (!((o = ois.readObject()) instanceof String)) {
 				// If the incoming object is a new transaction entry
 				if (o instanceof SildNewtxn) {
+
 					SildNewtxn new_txn = (SildNewtxn) o;
 					tid = new_txn.getTxn_id();
-					seq_counter = 0;
 
-					// Put a committed mark for the previous transaction log
-					if (txn_dir != null) {
-						File committed_mark = new File(
-								txn_dir.getAbsolutePath() + "/C");
-						committed_mark.createNewFile();
-					}
+					// Check if replica already has this transaction
+					if ((isExist = checkExist(tid)))
+						continue;
+
+					// Create a transaction in memory
+					SildTxn txn = new SildTxn(tid, new_txn);
+
+					// Store it in the txn_list
+					txn_list.put(tid, txn);
+
+					seq_counter = 0;
 
 					// Make a new directory
 					txn_dir = new File(this.getLog_dir() + "/.txn" + tid);
@@ -69,13 +80,32 @@ public class SildReplicaHandler implements Runnable {
 					fos.getFD().sync();
 					oos.close();
 					fos.close();
+					
+					// Put a committed mark and ordering for the previous
+					// transaction log
+					File committed_mark = new File(
+							txn_dir.getAbsolutePath() + "/C");
+					committed_mark.createNewFile();
+					File committed_ordering = new File(
+							txn_dir.getAbsolutePath() + "/O"
+									+ commit_order.get(order));
+					committed_ordering.createNewFile();
 				} else if (o instanceof Integer) {
-					commit_order.put((Integer) o, (Integer) tid);
+					if (isExist) continue;
+					
+					// Store the commit order in memory
+					order = (Integer) o;
+					commit_order.put(order, (Integer) tid);
 				} else {
+					if (isExist) continue;
+					
 					// If incoming object is a SildData entry
 					SildData sild_data = (SildData) o;
 					File sild_data_file = new File(txn_dir.getAbsolutePath()
-							+ "/" + seq_counter++);
+							+ "/" + seq_counter);
+
+					// Store it in memory
+					txn_list.get(tid).addData(seq_counter++, sild_data);
 
 					// Record this entry to the disk
 					sild_data_file.createNewFile();
@@ -94,7 +124,7 @@ public class SildReplicaHandler implements Runnable {
 				}
 			}
 			long endTime = System.currentTimeMillis();
-			System.out.println("Log replication completed, using: "
+			System.out.println("Log replication completed -- using: "
 					+ (-startTime + endTime) + " ms.");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -104,9 +134,80 @@ public class SildReplicaHandler implements Runnable {
 
 	/* Apply the log entries */
 	public void replay() {
-		for (int i = 1; i <= commit_order.size(); i++) {
-			System.out.println(commit_order.get(i));
+		long startTime = System.currentTimeMillis();
+		try {
+			for (int order : commit_order.keySet()) {
+				int tid = commit_order.get(order);
+				SildTxn txn = txn_list.get(tid);
+
+				// Execute the new transaction call
+				SildNewtxn new_txn = txn.getNew_txn();
+
+				// Modify the directory to replica's
+				new_txn.setDir(this.getDir());
+				new_txn.execute();
+
+				// Obtain the update data list
+				HashMap<Integer, SildData> data_list = txn.getData_list();
+
+				// Get the update text data
+				StringBuilder text = new StringBuilder();
+				for (int j = 1; j <= data_list.size(); j++) {
+					text.append(data_list.get(j).getData());
+				}
+
+				// Update the file; flush to disk
+				File f = new_txn.getF();
+				FileOutputStream fos = new FileOutputStream(f, true);
+				fos.write(text.toString().getBytes());
+				fos.flush();
+				fos.getFD().sync();
+				fos.getFD().sync();
+				fos.close();
+			}
+			long endTime = System.currentTimeMillis();
+			System.out.println("Files updated -- using: "
+					+ (-startTime + endTime) + " ms.");
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
+	}
+
+	/**
+	 * Check if the transaction log already exists; If it exists but not yet
+	 * committed, remove the directory.
+	 * 
+	 * @param tid
+	 * @return
+	 */
+	public boolean checkExist(int tid) {
+		try {
+			File txn_dir = new File(this.getLog_dir() + "/.txn" + tid);
+			if (txn_dir.exists()) {
+				File f = new File(txn_dir.getAbsolutePath() + "/C");
+				if (f.exists()) {
+					System.out.println("skip: "+tid);
+					return true;}
+				else
+					deleteDirectory(txn_dir);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return false;
+	}
+
+	public void deleteDirectory(File path) throws Exception {
+		File[] sub = path.listFiles();
+		for (File file : sub) {
+			if (file.isDirectory()) {
+				deleteDirectory(file);
+				file.delete();
+			} else {
+				file.delete();
+			}
+		}
+		path.delete();
 	}
 
 	public Socket getPrimary_so() {

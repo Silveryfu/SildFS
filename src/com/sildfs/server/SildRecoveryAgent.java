@@ -76,7 +76,7 @@ public class SildRecoveryAgent {
 					if(file_name.contains("C")) {
 						SildHandler.getCommitted_txn().put(tid, true);
 						continue;
-					}
+					} 
 					
 					int seq_num = Integer.valueOf(file_name);
 					FileInputStream fis = new FileInputStream(elist[j]);
