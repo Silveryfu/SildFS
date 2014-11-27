@@ -14,7 +14,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
@@ -428,16 +427,15 @@ public class SildHandler implements Runnable {
 
 			// Set the committed list
 			committed_txn.put(txn_id, true);
-			
+
 			// Mark this log as committed
-			File commit_mark = new File(txn_log+"/C");
+			File commit_mark = new File(txn_log + "/C");
 			commit_mark.createNewFile();
-			
+
 			// Send ACK to the client
 			SildResp resp = new SildResp("ACK", txn_id, -1);
 			out.print(resp.getMessage());
 
-			
 		} catch (Exception e) {
 			SildResp resp = new SildResp("ERROR", txn_id, seq_num, 205);
 			out.print(resp.getMessage());
@@ -468,7 +466,15 @@ public class SildHandler implements Runnable {
 		primary_agent = new SildPrimaryAgent();
 		primary_agent.setReplica_ip(ip_port[0]);
 		primary_agent.setReplica_port(Integer.valueOf(ip_port[1]));
+		primary_agent.setLog_base(this.getDir() + "/.TXN/");
 		primary_agent.foo();
+		try {
+			// Give a time window for the replica start the listen port
+			Thread.sleep(50);
+			primary_agent.replicate_committed();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void clear_log(int txn_id) throws Exception {

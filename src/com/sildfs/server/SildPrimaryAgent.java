@@ -1,5 +1,12 @@
 package com.sildfs.server;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.net.Socket;
+import java.util.Arrays;
+
 /**
  * This file defines a server agent handling replication with a primary server
  * peer; The replica peer will send her listening IP and peer agent's port
@@ -15,8 +22,53 @@ public class SildPrimaryAgent implements Runnable {
 
 	private String replica_ip;
 	private int replica_port;
+	private String log_base;
 
 	public void run() {
+
+	}
+
+	/* Replicate the committed transaction */
+	public void replicate_committed() {
+		try {
+			// Obtain the output stream to replica
+			Socket so = new Socket(this.getReplica_ip(), this.getReplica_port());
+			ObjectOutputStream oos = new ObjectOutputStream(so.getOutputStream());
+			
+			File f = new File(this.getLog_base());
+			File[] listOfFiles = f.listFiles();
+			
+			for (int i = 0; i < listOfFiles.length; i++) {
+				File commit_mark = new File(listOfFiles[i].getAbsolutePath()+"/"+"C");
+				
+				// If this transaction is already committed
+				if(!commit_mark.exists()) {
+					System.out.println("jackie");
+					continue;
+				}
+				
+				System.out.println("jack");
+				File[] txn_files = listOfFiles[i].listFiles();
+				Arrays.sort(txn_files);
+				
+				for (int j = 0; j < txn_files.length; j++) {
+					if(txn_files[j].getName().equals("C")) continue;
+					FileInputStream fis = new FileInputStream(txn_files[j]);
+					ObjectInputStream ois = new ObjectInputStream(fis);
+					oos.writeObject(ois.readObject());
+				}
+			}
+			// Write an ending separator
+			oos.writeObject(new String("0"));
+
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	/* Replicate the current base files */
+	public void replicate_files() {
 
 	}
 
@@ -35,8 +87,16 @@ public class SildPrimaryAgent implements Runnable {
 	public void setReplica_port(int replica_port) {
 		this.replica_port = replica_port;
 	}
-	
+
 	public void foo() {
 		System.out.println(this.getReplica_ip() + " " + this.getReplica_port());
+	}
+
+	public String getLog_base() {
+		return log_base;
+	}
+
+	public void setLog_base(String log_base) {
+		this.log_base = log_base;
 	}
 }

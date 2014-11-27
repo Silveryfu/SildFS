@@ -6,6 +6,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.sildfs.server.SildPrimaryAgent;
 
@@ -29,16 +31,26 @@ public class SildReplicaAgent implements Runnable {
 	private ServerSocket listenSocket;
 	private String primary_ip;
 	private int primary_port;
+	private String log_dir;
+	private String dir;
 
 	/**
 	 * SildServerAgent is only valid when current server is a primary server;
 	 */
 	private SildPrimaryAgent server_agent;
 	private static final String INIT_REQUEST = "NEW_REPLICA 0 0 ";
-
+	
+	/**
+	 * Use ExecutorService for handling thread 
+	 */
+	private ExecutorService ex;
+	
 	
 	public void startListen() {
 		try {
+			/* Initialize the executor service */
+			ex = Executors.newCachedThreadPool();
+			
 			/**
 			 * Create the server listening socket, binds it to the given or
 			 * default Internet address and port number
@@ -59,13 +71,22 @@ public class SildReplicaAgent implements Runnable {
 			return;
 		}
 
+		// Send the initial request to the primary
 		this.initRequest();
 		while (true) {
 			try {
 				// Start the listening socket
 				Socket clientSocket = listenSocket.accept();
 				System.out.println("primary server:" + clientSocket.getPort());
-
+				
+				// Use SildReplicaHandler to handle the workload
+				SildReplicaHandler sh = new SildReplicaHandler();
+				sh.setPrimary_so(clientSocket);
+				sh.setDir(this.getDir());
+				sh.setLog_dir(this.getLog_dir());
+				
+				// Execute the handler
+				ex.execute(sh);
 			} catch (Exception e) {
 				System.out
 						.println("Failed to accept new primary server request.");
@@ -132,5 +153,21 @@ public class SildReplicaAgent implements Runnable {
 
 	public void setPrimary_port(int primary_port) {
 		this.primary_port = primary_port;
+	}
+
+	public String getLog_dir() {
+		return log_dir;
+	}
+
+	public void setLog_dir(String log_dir) {
+		this.log_dir = log_dir;
+	}
+
+	public String getDir() {
+		return dir;
+	}
+
+	public void setDir(String dir) {
+		this.dir = dir;
 	}
 }

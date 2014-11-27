@@ -8,6 +8,7 @@ package com.sildfs.server;
  * @author: dif
  */
 
+import java.io.File;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -84,18 +85,25 @@ public class SildMain implements Runnable {
 		// Initialize the executor service for replica agent thread
 		replica = Executors.newSingleThreadExecutor();
 		
+		// Initialize the file folder and log folder
+		File file_dir = new File(this.getDir());
+		File log_dir = new File(this.getDir() + "/.TXN/");
+		if(!file_dir.exists()) file_dir.mkdirs();
+		if(!log_dir.exists()) log_dir.mkdir();
+		
 		// Initialize the replica agent
 		replica_agent = new SildReplicaAgent();
 		
 		replica_agent.setIp(this.getIp());
 		replica_agent.setPrimary_ip(this.getPrimary_ip());
 		replica_agent.setPrimary_port(this.getPrimary_port());
+		replica_agent.setDir(this.getDir());
+		replica_agent.setLog_dir(log_dir.getAbsolutePath());
 		
 		replica.execute(replica_agent);
 	}
 	
-	public void startServerAgent() {
-		
+	public void startPrimaryAgent() {
 	}
 	
 	public void run() {
