@@ -131,7 +131,7 @@ public class SildMain implements Runnable {
 
 		// Running the collector task every interval
 		Timer timer = new Timer(true);
-		timer.scheduleAtFixedRate(t, 5000, 15 * 60 * 1000);
+		timer.scheduleAtFixedRate(t, 5000, 60 * 60 * 1000);
 
 		// TODO: handle the client side sudden disconnection here
 		while (true) {

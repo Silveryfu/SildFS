@@ -73,7 +73,7 @@ public class SildRecoveryAgent {
 				Arrays.sort(elist);
 				for (int j = 0; j < elist.length; j++) {
 					String file_name = elist[j].getName();
-					if(file_name.equals("C")) {
+					if(file_name.contains("C")) {
 						SildHandler.getCommitted_txn().put(tid, true);
 						continue;
 					}
@@ -99,6 +99,9 @@ public class SildRecoveryAgent {
 					.println("Not able to recover transaction. Abort previous ones.");
 			e.printStackTrace();
 		}
+	}
+	
+	public void recoverFiles() {
 	}
 	
 	public void recoverHistory() {

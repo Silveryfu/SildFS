@@ -322,15 +322,11 @@ public class SildHandler implements Runnable {
 			if (txn_list.get(txn_id).isCommitted()) {
 				SildReq sildreq = txn_list.get(txn_id).getOld_commit();
 				if (seq_num != sildreq.getSeq_num()) {
-					SildResp resp = new SildResp("ERROR", txn_id, seq_num, 208);
+					SildResp resp = new SildResp("ERROR", txn_id, seq_num, 207);
 					out.print(resp.getMessage());
 					return;
 				}
 			}
-
-			SildTxn txn = txn_list.get(txn_id);
-			txn.setCommitted(true);
-			txn.setOld_commit(req);
 
 			// Check if there are missing packets which have lower sequence
 			// numbers than the largest existing one; If there are, ask for
@@ -370,7 +366,10 @@ public class SildHandler implements Runnable {
 				out.print(resp.getMessage());
 				isMissing = true;
 			}
-
+			
+			SildTxn txn = txn_list.get(txn_id);
+			txn.setCommitted(true);
+			txn.setOld_commit(req);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -379,6 +378,7 @@ public class SildHandler implements Runnable {
 		if (isMissing)
 			return;
 
+		
 		/* Commit this transaction */
 		try {
 			SildTxn txn = txn_list.get(txn_id);
@@ -431,6 +431,11 @@ public class SildHandler implements Runnable {
 			// Mark this log as committed
 			File commit_mark = new File(txn_log + "/C");
 			commit_mark.createNewFile();
+			
+			// Mark the commit order
+			File commit_order = new File(txn_log + "/O"
+					+ committed_txn.keySet().size());
+			commit_order.createNewFile();
 
 			// Send ACK to the client
 			SildResp resp = new SildResp("ACK", txn_id, -1);

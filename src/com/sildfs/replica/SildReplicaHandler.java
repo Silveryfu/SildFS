@@ -5,8 +5,9 @@ import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.util.HashMap;
+import java.util.Iterator;
 
-import com.sildfs.server.SildRecoveryAgent;
 import com.sildfs.transaction.SildData;
 import com.sildfs.transaction.SildNewtxn;
 
@@ -21,19 +22,26 @@ public class SildReplicaHandler implements Runnable {
 	private Socket primary_so;
 	private String dir;
 	private String log_dir;
+	private HashMap<Integer, Integer> commit_order;
 
 	public void run() {
 		try {
 			File txn_dir = null;
 			int seq_counter = 0;
+			int tid = -1;
+			commit_order = new HashMap<Integer, Integer>();
+			long startTime = System.currentTimeMillis();
+
+			// Obtain input stream
 			ObjectInputStream ois = new ObjectInputStream(
 					primary_so.getInputStream());
 			Object o;
+
 			while (!((o = ois.readObject()) instanceof String)) {
 				// If the incoming object is a new transaction entry
 				if (o instanceof SildNewtxn) {
 					SildNewtxn new_txn = (SildNewtxn) o;
-					int tid = new_txn.getTxn_id();
+					tid = new_txn.getTxn_id();
 					seq_counter = 0;
 
 					// Put a committed mark for the previous transaction log
@@ -61,6 +69,8 @@ public class SildReplicaHandler implements Runnable {
 					fos.getFD().sync();
 					oos.close();
 					fos.close();
+				} else if (o instanceof Integer) {
+					commit_order.put((Integer) o, (Integer) tid);
 				} else {
 					// If incoming object is a SildData entry
 					SildData sild_data = (SildData) o;
@@ -83,12 +93,20 @@ public class SildReplicaHandler implements Runnable {
 					fos.close();
 				}
 			}
+			long endTime = System.currentTimeMillis();
+			System.out.println("Log replication completed, using: "
+					+ (-startTime + endTime) + " ms.");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		replay();
 	}
 
+	/* Apply the log entries */
 	public void replay() {
+		for (int i = 1; i <= commit_order.size(); i++) {
+			System.out.println(commit_order.get(i));
+		}
 	}
 
 	public Socket getPrimary_so() {

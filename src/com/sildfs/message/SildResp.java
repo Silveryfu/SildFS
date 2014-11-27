@@ -21,7 +21,8 @@ public class SildResp {
 		error_map.put(204, "Wrong message format");
 		error_map.put(205, "File I/O error");
 		error_map.put(206, "File not found");
-		error_map.put(207, "Bad Sequence number. Invalid operation.");
+		error_map.put(207,
+				"Bad/Inconsistent Sequence number. Invalid operation.");
 
 		// For there is no error
 		error_map.put(-1, "\r\n");
