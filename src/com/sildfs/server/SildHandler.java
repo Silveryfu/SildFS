@@ -323,7 +323,7 @@ public class SildHandler implements Runnable {
 			if (txn_list.get(txn_id).isCommitted()) {
 				SildReq sildreq = txn_list.get(txn_id).getOld_commit();
 				if (seq_num != sildreq.getSeq_num()) {
-					SildResp resp = new SildResp("ERROR", txn_id, seq_num, 207);
+					SildResp resp = new SildResp("ERROR", txn_id, seq_num, 208);
 					out.print(resp.getMessage());
 					return;
 				}
@@ -426,13 +426,18 @@ public class SildHandler implements Runnable {
 			// Release the lock;
 			flock.unlock();
 
+			// Set the committed list
+			committed_txn.put(txn_id, true);
+			
+			// Mark this log as committed
+			File commit_mark = new File(txn_log+"/C");
+			commit_mark.createNewFile();
+			
 			// Send ACK to the client
 			SildResp resp = new SildResp("ACK", txn_id, -1);
 			out.print(resp.getMessage());
 
-			// Set the committed list
-			committed_txn.put(txn_id, true);
-
+			
 		} catch (Exception e) {
 			SildResp resp = new SildResp("ERROR", txn_id, seq_num, 205);
 			out.print(resp.getMessage());
@@ -589,5 +594,14 @@ public class SildHandler implements Runnable {
 
 	public void setAgent(SildRecoveryAgent agent) {
 		this.recov_agent = agent;
+	}
+
+	public static ConcurrentHashMap<Integer, Boolean> getCommitted_txn() {
+		return committed_txn;
+	}
+
+	public static void setCommitted_txn(
+			ConcurrentHashMap<Integer, Boolean> committed_txn) {
+		SildHandler.committed_txn = committed_txn;
 	}
 }

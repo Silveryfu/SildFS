@@ -72,7 +72,13 @@ public class SildRecoveryAgent {
 				File[] elist = e.listFiles();
 				Arrays.sort(elist);
 				for (int j = 0; j < elist.length; j++) {
-					int seq_num = Integer.valueOf(elist[j].getName());
+					String file_name = elist[j].getName();
+					if(file_name.equals("C")) {
+						SildHandler.getCommitted_txn().put(tid, true);
+						continue;
+					}
+					
+					int seq_num = Integer.valueOf(file_name);
 					FileInputStream fis = new FileInputStream(elist[j]);
 					ObjectInputStream ois = new ObjectInputStream(fis);
 					if (seq_num == 0) {
@@ -94,7 +100,7 @@ public class SildRecoveryAgent {
 			e.printStackTrace();
 		}
 	}
-
+	
 	public void recoverHistory() {
 	}
 
