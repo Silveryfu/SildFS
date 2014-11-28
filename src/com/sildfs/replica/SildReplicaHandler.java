@@ -6,7 +6,6 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.HashMap;
-import java.util.Map;
 import java.util.TreeMap;
 
 import com.sildfs.transaction.SildData;
@@ -26,13 +25,15 @@ public class SildReplicaHandler implements Runnable {
 	private String log_dir;
 	private TreeMap<Integer, Integer> commit_order;
 	private HashMap<Integer, SildTxn> txn_list;
+	private static final int TIME_OUT = 120000;
 
 	public void run() {
+		boolean isLiveReplication = false;
+		int tid = -1;
 		try {
 			File txn_dir = null;
 			int seq_counter = 0;
-			int tid = -1;
-			int order = -1;
+			Integer order = new Integer(-2);
 			boolean isExist = false;
 			commit_order = new TreeMap<Integer, Integer>();
 			txn_list = new HashMap<Integer, SildTxn>();
@@ -43,6 +44,7 @@ public class SildReplicaHandler implements Runnable {
 					primary_so.getInputStream());
 			Object o;
 
+			primary_so.setSoTimeout(TIME_OUT);
 			while (!((o = ois.readObject()) instanceof String)) {
 				// If the incoming object is a new transaction entry
 				if (o instanceof SildNewtxn) {
@@ -80,25 +82,30 @@ public class SildReplicaHandler implements Runnable {
 					fos.getFD().sync();
 					oos.close();
 					fos.close();
-					
+
 					// Put a committed mark and ordering for the previous
 					// transaction log
-					File committed_mark = new File(
-							txn_dir.getAbsolutePath() + "/C");
+					File committed_mark = new File(txn_dir.getAbsolutePath()
+							+ "/C");
 					committed_mark.createNewFile();
 					File committed_ordering = new File(
-							txn_dir.getAbsolutePath() + "/O"
-									+ commit_order.get(order));
+							txn_dir.getAbsolutePath() + "/O" + order.toString());
 					committed_ordering.createNewFile();
 				} else if (o instanceof Integer) {
-					if (isExist) continue;
-					
+					if (isExist)
+						continue;
+
 					// Store the commit order in memory
 					order = (Integer) o;
 					commit_order.put(order, (Integer) tid);
+				} else if (o instanceof Character) {
+
+					// If it is live replication messages
+					isLiveReplication = true;
 				} else {
-					if (isExist) continue;
-					
+					if (isExist)
+						continue;
+
 					// If incoming object is a SildData entry
 					SildData sild_data = (SildData) o;
 					File sild_data_file = new File(txn_dir.getAbsolutePath()
@@ -124,12 +131,70 @@ public class SildReplicaHandler implements Runnable {
 				}
 			}
 			long endTime = System.currentTimeMillis();
-			System.out.println("Log replication completed -- using: "
+			System.out.println("--R-- Log replication completed -- using: "
 					+ (-startTime + endTime) + " ms.");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		replay();
+
+		// Apply the live replication
+		if (isLiveReplication)
+			replayLive(tid);
+
+		// Apply the log to rebuild the files
+		else
+			replay();
+
+		// Reply an ACK to the primary
+		replyToPrimary("ACK");
+	}
+
+	public void replyToPrimary(String message) {
+		try {
+			ObjectOutputStream oos = new ObjectOutputStream(this
+					.getPrimary_so().getOutputStream());
+			oos.writeObject(message);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void replayLive(int tid) {
+		long startTime = System.currentTimeMillis();
+		try {
+
+			SildTxn txn = txn_list.get(tid);
+			// Execute the new transaction call
+			SildNewtxn new_txn = txn.getNew_txn();
+
+			// Modify the directory to replica's
+			new_txn.setDir(this.getDir());
+			new_txn.execute();
+
+			// Obtain the update data list
+			HashMap<Integer, SildData> data_list = txn.getData_list();
+
+			// Get the update text data
+			StringBuilder text = new StringBuilder();
+			for (int j = 1; j <= data_list.size(); j++) {
+				text.append(data_list.get(j).getData());
+			}
+
+			// Update the file; flush to disk
+			File f = new_txn.getF();
+			FileOutputStream fos = new FileOutputStream(f, true);
+			fos.write(text.toString().getBytes());
+			fos.flush();
+			fos.getFD().sync();
+			fos.getFD().sync();
+			fos.close();
+
+			long endTime = System.currentTimeMillis();
+			System.out.println("--R-- Files updated for live replication -- using: "
+					+ (-startTime + endTime) + " ms.");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 
 	/* Apply the log entries */
@@ -166,7 +231,7 @@ public class SildReplicaHandler implements Runnable {
 				fos.close();
 			}
 			long endTime = System.currentTimeMillis();
-			System.out.println("Files updated -- using: "
+			System.out.println("--R-- Files updated -- using: "
 					+ (-startTime + endTime) + " ms.");
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -186,9 +251,8 @@ public class SildReplicaHandler implements Runnable {
 			if (txn_dir.exists()) {
 				File f = new File(txn_dir.getAbsolutePath() + "/C");
 				if (f.exists()) {
-					System.out.println("skip: "+tid);
-					return true;}
-				else
+					return true;
+				} else
 					deleteDirectory(txn_dir);
 			}
 		} catch (Exception e) {

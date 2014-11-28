@@ -17,6 +17,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.sildfs.replica.SildReplicaAgent;
 import com.sildfs.tool.SildArgParser;
@@ -66,6 +67,7 @@ public class SildMain implements Runnable {
 	private int primary_port;
 
 	public void startService() {
+		
 		// Run the recovery agent
 		this.setAgent(new SildRecoveryAgent(this.getDir()));
 		this.getAgent().recover();
@@ -82,6 +84,7 @@ public class SildMain implements Runnable {
 	}
 	
 	public void startReplicaService() {
+		
 		// Initialize the executor service for replica agent thread
 		replica = Executors.newSingleThreadExecutor();
 		
@@ -116,11 +119,11 @@ public class SildMain implements Runnable {
 			listenSocket.bind(new InetSocketAddress(InetAddress.getByName(this
 					.getIp()), this.getPortNumber()));
 
-			System.out.println("SildFS starts listening to port: "
+			System.out.println("--P-- SildFS primary starts listening to port: "
 					+ this.getPortNumber());
 
 		} catch (Exception e) {
-			System.out.println("Listening socket "
+			System.out.println("--P-- Listening socket "
 					+ "fails to initialize. Please check if the port "
 					+ this.getPortNumber() + " is already in use.");
 			e.printStackTrace();
@@ -131,7 +134,7 @@ public class SildMain implements Runnable {
 
 		// Running the collector task every interval
 		Timer timer = new Timer(true);
-		timer.scheduleAtFixedRate(t, 5000, 60 * 60 * 1000);
+//		timer.scheduleAtFixedRate(t, 5000, 60 * 60 * 1000);
 
 		// TODO: handle the client side sudden disconnection here
 		while (true) {
@@ -148,7 +151,7 @@ public class SildMain implements Runnable {
 				// Start handler for this client
 				pool.execute(handler);
 			} catch (Exception e) {
-				System.out.println("Failed to accept new client.");
+				System.out.println("--P-- Failed to accept new client.");
 			}
 		}
 	}

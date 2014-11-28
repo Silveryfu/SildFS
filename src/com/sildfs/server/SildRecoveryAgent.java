@@ -73,6 +73,7 @@ public class SildRecoveryAgent {
 				Arrays.sort(elist);
 				for (int j = 0; j < elist.length; j++) {
 					String file_name = elist[j].getName();
+					if(file_name.contains("O")) continue;
 					if(file_name.contains("C")) {
 						SildHandler.getCommitted_txn().put(tid, true);
 						continue;

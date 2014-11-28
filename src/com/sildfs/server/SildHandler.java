@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -41,7 +42,7 @@ public class SildHandler implements Runnable {
 	private PrintStream out;
 	private String dir;
 	private SildRecoveryAgent recov_agent;
-	private SildPrimaryAgent primary_agent;
+	private static SildPrimaryAgent primary_agent;
 
 	private static final int SOCKET_TIMEOUT = 120000;
 
@@ -51,6 +52,10 @@ public class SildHandler implements Runnable {
 	private static ConcurrentHashMap<Integer, SildTxn> txn_list;
 
 	private static ConcurrentHashMap<Integer, Boolean> committed_txn;
+
+	public static Object rep_lock;
+
+	public static AtomicBoolean isRepFinish, isReplicated;
 
 	// Initialize the static fields
 	static {
@@ -62,6 +67,15 @@ public class SildHandler implements Runnable {
 
 		// Initialize committed history
 		committed_txn = new ConcurrentHashMap<Integer, Boolean>();
+
+		// A replication lock
+		rep_lock = new Object();
+
+		// Boolean to flag if the replication finished
+		isRepFinish = new AtomicBoolean(true);
+
+		// Boolean to flag if there is a replica
+		isReplicated = new AtomicBoolean(false);
 	}
 
 	public SildHandler(Socket socket) {
@@ -72,7 +86,7 @@ public class SildHandler implements Runnable {
 	};
 
 	public void run() {
-		System.out.println("Start handling client: "
+		System.out.println("--P-- Start handling client: "
 				+ this.getSocket().getInetAddress() + ":"
 				+ this.getSocket().getPort());
 		try {
@@ -127,7 +141,8 @@ public class SildHandler implements Runnable {
 
 		} catch (SocketTimeoutException se) {
 			this.getSocket().close();
-			System.out.println("Time out on: " + this.getSocket().getPort());
+			System.out.println("--P-- Time out on: "
+					+ this.getSocket().getPort());
 			return false;
 		} catch (Exception e) {
 			SildResp resp = new SildResp("ERROR", req.getTxn_id(),
@@ -366,7 +381,7 @@ public class SildHandler implements Runnable {
 				out.print(resp.getMessage());
 				isMissing = true;
 			}
-			
+
 			SildTxn txn = txn_list.get(txn_id);
 			txn.setCommitted(true);
 			txn.setOld_commit(req);
@@ -378,13 +393,27 @@ public class SildHandler implements Runnable {
 		if (isMissing)
 			return;
 
-		
 		/* Commit this transaction */
 		try {
 			SildTxn txn = txn_list.get(txn_id);
 
 			// Execute the new transaction call
 			SildNewtxn new_txn = txn.getNew_txn();
+
+			// If the replication for committed transaction has not yet
+			// finished, wait until it does
+			synchronized (rep_lock) {
+				while (!isRepFinish.get()) {
+					try {
+						System.out
+								.println("--P-- Awaiting for replication completion.");
+						rep_lock.wait();
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+				}
+			}
+
 			new_txn.execute();
 
 			String file_name = new_txn.getFile();
@@ -431,11 +460,15 @@ public class SildHandler implements Runnable {
 			// Mark this log as committed
 			File commit_mark = new File(txn_log + "/C");
 			commit_mark.createNewFile();
-			
+
 			// Mark the commit order
 			File commit_order = new File(txn_log + "/O"
 					+ committed_txn.keySet().size());
 			commit_order.createNewFile();
+
+			if (isReplicated.get()) {
+				primary_agent.replicate_live(txn_id);
+			}
 
 			// Send ACK to the client
 			SildResp resp = new SildResp("ACK", txn_id, -1);
@@ -468,10 +501,12 @@ public class SildHandler implements Runnable {
 
 	public void new_replica(SildReq req) {
 		String[] ip_port = req.getData().split(" ");
+
 		primary_agent = new SildPrimaryAgent();
 		primary_agent.setReplica_ip(ip_port[0]);
 		primary_agent.setReplica_port(Integer.valueOf(ip_port[1]));
 		primary_agent.setLog_base(this.getDir() + "/.TXN/");
+		isReplicated.set(true);
 		primary_agent.foo();
 		try {
 			// Give a time window for the replica start the listen port

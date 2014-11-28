@@ -39,18 +39,17 @@ public class SildReplicaAgent implements Runnable {
 	 */
 	private SildPrimaryAgent server_agent;
 	private static final String INIT_REQUEST = "NEW_REPLICA 0 0 ";
-	
+
 	/**
-	 * Use ExecutorService for handling thread 
+	 * Use ExecutorService for handling thread
 	 */
 	private ExecutorService ex;
-	
-	
+
 	public void startListen() {
 		try {
 			/* Initialize the executor service */
 			ex = Executors.newCachedThreadPool();
-			
+
 			/**
 			 * Create the server listening socket, binds it to the given or
 			 * default Internet address and port number
@@ -60,14 +59,13 @@ public class SildReplicaAgent implements Runnable {
 					.getIp()), 0));
 			listen_port = listenSocket.getLocalPort();
 
-			System.out.println("SildFS replica listening to port: "
+			System.out.println("--R-- SildFS replica listening to port: "
 					+ this.getListen_port());
 
 		} catch (Exception e) {
-			System.out.println("Listening socket "
+			System.out.println("--R-- Listening socket "
 					+ "fails to initialize. Please check if the port "
 					+ this.getListen_port() + " is already in use.");
-			e.printStackTrace();
 			return;
 		}
 
@@ -77,19 +75,21 @@ public class SildReplicaAgent implements Runnable {
 			try {
 				// Start the listening socket
 				Socket clientSocket = listenSocket.accept();
-				System.out.println("primary server:" + clientSocket.getPort());
-				
+				System.out.println("--R-- Replicate from primary server on: "
+						+ clientSocket.getInetAddress().getHostAddress() + " "
+						+ clientSocket.getPort());
+
 				// Use SildReplicaHandler to handle the workload
 				SildReplicaHandler sh = new SildReplicaHandler();
 				sh.setPrimary_so(clientSocket);
 				sh.setDir(this.getDir());
 				sh.setLog_dir(this.getLog_dir());
-				
+
 				// Execute the handler
 				ex.execute(sh);
 			} catch (Exception e) {
 				System.out
-						.println("Failed to accept new primary server request.");
+						.println("--R-- Failed to accept new primary server request.");
 			}
 		}
 	}
@@ -109,13 +109,15 @@ public class SildReplicaAgent implements Runnable {
 				out.writeBytes(INIT_REQUEST + length + "\r\n\r\n" + data + "\n");
 			} catch (IOException ioe) {
 				System.out
-						.println("Could not send message to the primary server: "
+						.println("--R-- Could not send message to the primary server: "
 								+ ioe.getMessage());
 				return;
 			}
 
 		} catch (Exception e) {
-			e.printStackTrace();
+			System.out
+			.println("--R-- Could not send initial request to the primary. Check if it exists.");
+			System.exit(0);
 		}
 	}
 
