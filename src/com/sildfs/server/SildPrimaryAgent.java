@@ -14,7 +14,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * number to the server's listening port, and the SildHandler is responsible to
  * create a replica agent; The replica agent will start to replicate its server
  * content. Every client request from now on will be replicated before replying
- * an acknowledgment.
+ * an acknowledgment. This agent runs synchronously. 
  * 
  * @author dif
  */

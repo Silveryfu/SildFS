@@ -88,15 +88,15 @@ public class SildReplicaHandler implements Runnable {
 					File committed_mark = new File(txn_dir.getAbsolutePath()
 							+ "/C");
 					committed_mark.createNewFile();
-					File committed_ordering = new File(
-							txn_dir.getAbsolutePath() + "/O" + order.toString());
-					committed_ordering.createNewFile();
 				} else if (o instanceof Integer) {
 					if (isExist)
 						continue;
 
 					// Store the commit order in memory
 					order = (Integer) o;
+					File committed_ordering = new File(
+							txn_dir.getAbsolutePath() + "/O" + order.toString());
+					committed_ordering.createNewFile();
 					commit_order.put(order, (Integer) tid);
 				} else if (o instanceof Character) {
 
