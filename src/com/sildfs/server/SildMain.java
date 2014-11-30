@@ -13,18 +13,18 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.sildfs.replica.SildReplicaAgent;
 import com.sildfs.tool.SildArgParser;
+import com.sildfs.tool.SildConfModifier;
 import com.sildfs.tool.SildConfReader;
 import com.sildfs.transaction.SildLog;
 
 public class SildMain implements Runnable {
+
+	private static SildMain sild;
 
 	/* Server identification */
 	private boolean isReplica;
@@ -36,8 +36,8 @@ public class SildMain implements Runnable {
 	private String dir;
 
 	/**
-	 * SildRecoveryAgent is responsible for recovery routine;
-	 * SildReplicaAgent is only valid when current server is a replica server;
+	 * SildRecoveryAgent is responsible for recovery routine; SildReplicaAgent
+	 * is only valid when current server is a replica server;
 	 */
 	private SildRecoveryAgent recov_agent;
 	private SildReplicaAgent replica_agent;
@@ -58,16 +58,22 @@ public class SildMain implements Runnable {
 	 * The transaction log
 	 */
 	private SildLog sildlog;
-	
+
 	/**
-	 * These two attributes are only meaningful when the current server is
-	 * a replica server
+	 * These two attributes are only meaningful when the current server is a
+	 * replica server; backup_port is for when replica becomes primary.
 	 */
 	private String primary_ip;
 	private int primary_port;
+	private int backup_port;
+
+	/**
+	 * The path to the primary server configuration file
+	 */
+	private static String primary_file;
 
 	public void startService() {
-		
+
 		// Run the recovery agent
 		this.setAgent(new SildRecoveryAgent(this.getDir()));
 		this.getAgent().recover();
@@ -82,33 +88,55 @@ public class SildMain implements Runnable {
 		// Start the listening service
 		trunk.execute(this);
 	}
-	
+
 	public void startReplicaService() {
-		
 		// Initialize the executor service for replica agent thread
 		replica = Executors.newSingleThreadExecutor();
-		
+
 		// Initialize the file folder and log folder
 		File file_dir = new File(this.getDir());
 		File log_dir = new File(this.getDir() + "/.TXN/");
-		if(!file_dir.exists()) file_dir.mkdirs();
-		if(!log_dir.exists()) log_dir.mkdir();
-		
+		if (!file_dir.exists())
+			file_dir.mkdirs();
+		if (!log_dir.exists())
+			log_dir.mkdir();
+
 		// Initialize the replica agent
 		replica_agent = new SildReplicaAgent();
-		
+
 		replica_agent.setIp(this.getIp());
 		replica_agent.setPrimary_ip(this.getPrimary_ip());
 		replica_agent.setPrimary_port(this.getPrimary_port());
 		replica_agent.setDir(this.getDir());
 		replica_agent.setLog_dir(log_dir.getAbsolutePath());
-		
+
 		replica.execute(replica_agent);
 	}
-	
-	public void startPrimaryAgent() {
+
+	public void stopReplicaAgent() {
+		// Shutdown the replica agent
+		this.replica.shutdown();
+		System.out
+				.println("--R-- Replica agent stopping. Modifying primary configuration file.");
+
+		// Modify the primary server configuration file
+		SildConfModifier sm = new SildConfModifier();
+		sm.modify(primary_file, this.getIp(), this.getBackup_port());
+		System.out.println("--R-- Configuration file modification completed.");
+
+		this.setPortNumber(this.getBackup_port());
+		this.setReplica(false);
+		System.out
+				.println("--R-- Primary server configuration completed. Launching primary server.");
 	}
 	
+	public void reboot() {
+		// Run the recovery agent
+		this.setAgent(new SildRecoveryAgent(this.getDir()));
+		this.getAgent().clearUncommitted();
+		this.getAgent().recover();
+	}
+
 	public void run() {
 		try {
 			/**
@@ -119,8 +147,9 @@ public class SildMain implements Runnable {
 			listenSocket.bind(new InetSocketAddress(InetAddress.getByName(this
 					.getIp()), this.getPortNumber()));
 
-			System.out.println("--P-- SildFS primary starts listening to port: "
-					+ this.getPortNumber());
+			System.out
+					.println("--P-- SildFS primary starts listening to port: "
+							+ this.getPortNumber());
 
 		} catch (Exception e) {
 			System.out.println("--P-- Listening socket "
@@ -130,13 +159,12 @@ public class SildMain implements Runnable {
 			return;
 		}
 
-		TimerTask t = new SildCollector(this.getDir());
+		// TimerTask t = new SildCollector(this.getDir());
 
 		// Running the collector task every interval
-		Timer timer = new Timer(true);
-//		timer.scheduleAtFixedRate(t, 5000, 60 * 60 * 1000);
+		// Timer timer = new Timer(true);
+		// timer.scheduleAtFixedRate(t, 5000, 60 * 60 * 1000);
 
-		// TODO: handle the client side sudden disconnection here
 		while (true) {
 			try {
 				// Start the listening socket
@@ -183,12 +211,13 @@ public class SildMain implements Runnable {
 		this.setDir(dir);
 	}
 
-	public SildMain(String ip, int portNumber, String dir, String primaryIp, int primaryPort) {
+	public SildMain(String ip, int portNumber, String dir, String primaryIp,
+			int primaryPort) {
 		this.setIp(ip);
 		this.setPortNumber(portNumber);
 		this.setDir(dir);
 	}
-	
+
 	public String getDir() {
 		return dir;
 	}
@@ -209,8 +238,24 @@ public class SildMain implements Runnable {
 		return portNumber;
 	}
 
+	public int getBackup_port() {
+		return backup_port;
+	}
+
+	public void setBackup_port(int backup_port) {
+		this.backup_port = backup_port;
+	}
+
 	public void setPortNumber(int portNumber) {
 		this.portNumber = portNumber;
+	}
+
+	public static String getPrimary_file() {
+		return primary_file;
+	}
+
+	public static void setPrimary_file(String primary_file) {
+		SildMain.primary_file = primary_file;
 	}
 
 	public String getIp() {
@@ -242,7 +287,7 @@ public class SildMain implements Runnable {
 	public void setAgent(SildRecoveryAgent agent) {
 		this.recov_agent = agent;
 	}
-	
+
 	public boolean isReplica() {
 		return isReplica;
 	}
@@ -267,6 +312,14 @@ public class SildMain implements Runnable {
 		this.primary_port = primary_port;
 	}
 
+	public static SildMain getSild() {
+		return sild;
+	}
+
+	public static void setSild(SildMain sild) {
+		SildMain.sild = sild;
+	}
+
 	public static void main(String[] args) {
 		SildArgParser arg_parser = new SildArgParser();
 		SildConfReader conf_reader = new SildConfReader();
@@ -276,8 +329,8 @@ public class SildMain implements Runnable {
 		arg_parser.parse(args);
 
 		if (arg_parser.isPrimary()) {
-			/* Start a primary server.
-			 * Do sanity check for primary.txt
+			/*
+			 * Start a primary server. Do sanity check for primary.txt
 			 */
 			arg_parser.checkFromFile();
 
@@ -285,16 +338,16 @@ public class SildMain implements Runnable {
 			conf_reader.read(arg_parser.getPrimaryFile());
 
 			// Create a SildFS primary server
-			sild = new SildMain(conf_reader.getIp(),
-					conf_reader.getPort(), arg_parser.getDir());
+			sild = new SildMain(conf_reader.getIp(), conf_reader.getPort(),
+					arg_parser.getDir());
 			sild.setReplica(false);
 
 			// Start service
 			sild.startService();
 
 		} else if (arg_parser.isReplica()) {
-			/* Start a replica server.
-			 * Do sanity check for primary.txt
+			/*
+			 * Start a replica server. Do sanity check for primary.txt
 			 */
 			arg_parser.checkFromFile();
 
@@ -314,14 +367,15 @@ public class SildMain implements Runnable {
 			}
 			sild.startService();
 		} else if (arg_parser.isReboot()) {
-			/* Start a rebooted server.
-			 * Do sanity check for primary.txt
+			/*
+			 * Start a rebooted server. Do sanity check for primary.txt
 			 */
 			arg_parser.checkFromFile();
 
 		} else {
-			/* Start a server without replication.
-			 * Do sanity check for primary.txt
+			/*
+			 * Start a server without replication. Do sanity check for
+			 * primary.txt
 			 */
 			arg_parser.checkPlain();
 			// Start a server from command line input

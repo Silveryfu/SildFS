@@ -6,9 +6,12 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import com.sildfs.server.SildHeartBeater;
 import com.sildfs.server.SildPrimaryAgent;
 
 /**
@@ -111,13 +114,21 @@ public class SildReplicaAgent implements Runnable {
 				System.out
 						.println("--R-- Could not send message to the primary server: "
 								+ ioe.getMessage());
-				return;
 			}
-
+			
+			// Start listen to the heart-beat of the primary,
+			// Reuse this socket as the heart-beat socket
+			TimerTask t = new SildHeartBeater(so_primary, true);
+			Timer timer = new Timer(true);
+			
+			// The heart-beat rate is 300ms
+			timer.scheduleAtFixedRate(t, 1000, 300);
+			
 		} catch (Exception e) {
 			System.out
 			.println("--R-- Could not send initial request to the primary. Check if it exists.");
-			System.exit(0);
+			// Start listen to the heart-beat of the primary,
+			// Reuse this socket as the heart-beat socket
 		}
 	}
 
@@ -171,5 +182,13 @@ public class SildReplicaAgent implements Runnable {
 
 	public void setDir(String dir) {
 		this.dir = dir;
+	}	
+	
+	public ServerSocket getListenSocket() {
+		return listenSocket;
+	}
+
+	public void setListenSocket(ServerSocket listenSocket) {
+		this.listenSocket = listenSocket;
 	}
 }

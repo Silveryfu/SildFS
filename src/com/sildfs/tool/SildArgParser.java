@@ -35,6 +35,7 @@ public class SildArgParser {
 	private String Rip;
 	private int Rport;
 	private String Rdir;
+	private int backup_port;
 
 	public SildArgParser() {
 
@@ -63,6 +64,8 @@ public class SildArgParser {
 				} else if (args[i].equals("-r")) {
 					this.setReplica(true);
 					--i;
+				} else if (args[i].equals("-bp")) {
+					this.setBackup_port(checkPort(Integer.valueOf(args[i + 1])));
 				} else if (args[i].equals("-Rip")) {
 					this.setRip(checkIp(args[i + 1]));
 				} else if (args[i].equals("-Rport")) {
@@ -93,7 +96,7 @@ public class SildArgParser {
 	public void checkReplica() {
 		try {
 			if (this.getIp() == null || this.getPort() == 0
-					|| this.getDir() == null)
+					|| this.getDir() == null || this.getBackup_port() == 0)
 				throw new SildInvalidReplicaException();
 
 			Path path = Paths.get(this.getDir());
@@ -223,6 +226,14 @@ public class SildArgParser {
 
 	public void setDir(String dir) {
 		this.dir = dir;
+	}
+
+	public int getBackup_port() {
+		return backup_port;
+	}
+
+	public void setBackup_port(int backup_port) {
+		this.backup_port = backup_port;
 	}
 
 	public String getRip() {

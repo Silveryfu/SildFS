@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * number to the server's listening port, and the SildHandler is responsible to
  * create a replica agent; The replica agent will start to replicate its server
  * content. Every client request from now on will be replicated before replying
- * an acknowledgment. This agent runs synchronously. 
+ * an acknowledgment. 
+ * 
+ * Unlike the SildReplicaAgent, this agent runs completely synchronously.
  * 
  * @author dif
  */
@@ -32,8 +34,10 @@ public class SildPrimaryAgent implements Runnable {
 	/* Replicate the committed transaction */
 	public void replicate_committed() {
 		try {
-			// Set the replication finish flag to false
-			SildHandler.isRepFinish.set(false);
+			// When doing replications for the committed transactions,
+			// the other ongoing commits should wait until this operation
+			// completes and vice-versa
+			SildHandler.rep_lock.writeLock().lock();
 
 			// Obtain the output stream to replica
 			Socket so = new Socket(this.getReplica_ip(), this.getReplica_port());
@@ -52,23 +56,19 @@ public class SildPrimaryAgent implements Runnable {
 				if ((a = ois.readObject()) instanceof String) {
 					String msg = (String) a;
 					if (msg.equals("ACK")) {
-						System.out.println("--P-- Replication completed on replica.");
+						System.out
+								.println("--P-- Replication completed on replica.");
 
-						// Set the replication finish flag to true and release
+						// Set the replication finish flag to true and
+						// release
 						// the
 						// lock
-						SildHandler.isRepFinish.set(true);
-						synchronized (SildHandler.rep_lock) {
-							SildHandler.rep_lock.notifyAll();
-						}
+						SildHandler.rep_lock.writeLock().unlock();
 					} else {
-						SildHandler.isRepFinish.set(true);
-						synchronized (SildHandler.rep_lock) {
-							SildHandler.rep_lock.notifyAll();
-						}
+						SildHandler.rep_lock.writeLock().unlock();
 
-						// Wait for 2000ms before next sent
-						Thread.sleep(2000);
+						// Wait for 1000ms before next sent
+						Thread.sleep(1000);
 						replicate_committed();
 					}
 				}
@@ -114,28 +114,27 @@ public class SildPrimaryAgent implements Runnable {
 			if ((a = ois.readObject()) instanceof String) {
 				String msg = (String) a;
 				if (msg.equals("ACK")) {
-					System.out.println("--P-- Replication completed on replica.");
+					System.out
+							.println("--P-- Replication completed on replica.");
 
-					// Set the replication finish flag to true and release the
+					// Set the replication finish flag to true and release
+					// the
 					// lock
-					SildHandler.isRepFinish.set(true);
-					synchronized (SildHandler.rep_lock) {
-						SildHandler.rep_lock.notifyAll();
-					}
+					SildHandler.rep_lock.writeLock().unlock();
 				} else {
-					SildHandler.isRepFinish.set(true);
-					synchronized (SildHandler.rep_lock) {
-						SildHandler.rep_lock.notifyAll();
-					}
+					SildHandler.rep_lock.writeLock().unlock();
 
 					// Wait for 000ms before next sent
 					Thread.sleep(1000);
 					replicate_committed();
 				}
+			} else {
+				SildHandler.rep_lock.writeLock().unlock();
 			}
 			;
-
 		} catch (Exception e) {
+			System.out.println("--P-- Error occurs during replication.");
+			SildHandler.rep_lock.writeLock().unlock();
 			e.printStackTrace();
 		}
 	}
@@ -187,6 +186,7 @@ public class SildPrimaryAgent implements Runnable {
 			;
 
 		} catch (Exception e) {
+			System.out.println("--P-- Live-replication meets some errors.");
 			e.printStackTrace();
 		}
 	}
@@ -213,8 +213,8 @@ public class SildPrimaryAgent implements Runnable {
 	}
 
 	public void foo() {
-		System.out.println("--P-- Replica is ready on: " + this.getReplica_ip() + " "
-				+ this.getReplica_port());
+		System.out.println("--P-- Replica is ready on: " + this.getReplica_ip()
+				+ " " + this.getReplica_port());
 	}
 
 	public String getLog_base() {

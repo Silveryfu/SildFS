@@ -29,6 +29,10 @@ public class SildRecoveryAgent {
 		recoverTxn();
 		recoverHistory();
 	};
+	
+	public void clearUncommitted() {
+		
+	}
 
 	public void generateFileLocks() {
 		try {

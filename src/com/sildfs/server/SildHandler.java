@@ -14,6 +14,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
@@ -53,9 +55,9 @@ public class SildHandler implements Runnable {
 
 	private static ConcurrentHashMap<Integer, Boolean> committed_txn;
 
-	public static Object rep_lock;
+	public static ReentrantReadWriteLock rep_lock;
 
-	public static AtomicBoolean isRepFinish, isReplicated;
+	public static AtomicBoolean isReplicated;
 
 	// Initialize the static fields
 	static {
@@ -69,10 +71,7 @@ public class SildHandler implements Runnable {
 		committed_txn = new ConcurrentHashMap<Integer, Boolean>();
 
 		// A replication lock
-		rep_lock = new Object();
-
-		// Boolean to flag if the replication finished
-		isRepFinish = new AtomicBoolean(true);
+		rep_lock = new ReentrantReadWriteLock();
 
 		// Boolean to flag if there is a replica
 		isReplicated = new AtomicBoolean(false);
@@ -308,6 +307,7 @@ public class SildHandler implements Runnable {
 	}
 
 	public void commit(SildReq req) {
+//		long StartTime = System.currentTimeMillis();
 		// Cache the txn_id, seq_num, txn_log folder
 		int txn_id = req.getTxn_id();
 		int seq_num = req.getSeq_num();
@@ -402,17 +402,7 @@ public class SildHandler implements Runnable {
 
 			// If the replication for committed transaction has not yet
 			// finished, wait until it does
-			synchronized (rep_lock) {
-				while (!isRepFinish.get()) {
-					try {
-						System.out
-								.println("--P-- Awaiting for replication completion.");
-						rep_lock.wait();
-					} catch (InterruptedException e) {
-						e.printStackTrace();
-					}
-				}
-			}
+			SildHandler.rep_lock.readLock().lock();
 
 			new_txn.execute();
 
@@ -466,6 +456,7 @@ public class SildHandler implements Runnable {
 					+ committed_txn.keySet().size());
 			commit_order.createNewFile();
 
+			// If this primary server is replicated, do the replication
 			if (isReplicated.get()) {
 				primary_agent.replicate_live(txn_id);
 			}
@@ -474,7 +465,11 @@ public class SildHandler implements Runnable {
 			SildResp resp = new SildResp("ACK", txn_id, -1);
 			out.print(resp.getMessage());
 
+			SildHandler.rep_lock.readLock().unlock();
+//			long StopTime = System.currentTimeMillis();
+//			System.out.println(StopTime - StartTime);
 		} catch (Exception e) {
+			SildHandler.rep_lock.readLock().unlock();
 			SildResp resp = new SildResp("ERROR", txn_id, seq_num, 205);
 			out.print(resp.getMessage());
 			e.printStackTrace();
@@ -500,8 +495,14 @@ public class SildHandler implements Runnable {
 	}
 
 	public void new_replica(SildReq req) {
-		String[] ip_port = req.getData().split(" ");
+		// Reuse this socket as the heart-beat socket
+		TimerTask t = new SildHeartBeater(this.getSocket(), false);
+		Timer timer = new Timer(true);
+		
+		// The heart-beat rate is 300ms
+		timer.scheduleAtFixedRate(t, 1000, 300);
 
+		String[] ip_port = req.getData().split(" ");
 		primary_agent = new SildPrimaryAgent();
 		primary_agent.setReplica_ip(ip_port[0]);
 		primary_agent.setReplica_port(Integer.valueOf(ip_port[1]));

@@ -25,6 +25,7 @@ public class server {
 			 */
 			arg_parser.checkFromFile();
 
+			SildMain.setPrimary_file(arg_parser.getPrimaryFile());
 			// Read primary configuration file
 			conf_reader.read(arg_parser.getPrimaryFile());
 
@@ -32,6 +33,7 @@ public class server {
 			sild = new SildMain(conf_reader.getIp(),
 					conf_reader.getPort(), arg_parser.getDir());
 			sild.setReplica(false);
+			SildMain.setSild(sild);
 
 			// Start service
 			sild.startService();
@@ -43,6 +45,7 @@ public class server {
 			arg_parser.checkFromFile();
 			arg_parser.checkReplica();
 			
+			SildMain.setPrimary_file(arg_parser.getPrimaryFile());
 			conf_reader.read(arg_parser.getPrimaryFile());
 			
 			// Start a server from command line input
@@ -54,13 +57,20 @@ public class server {
 			sild.setReplica(true);
 			sild.setPrimary_ip(conf_reader.getIp());
 			sild.setPrimary_port(conf_reader.getPort());
+			sild.setBackup_port(arg_parser.getBackup_port());
+			SildMain.setSild(sild);
 			
 			sild.startReplicaService();
 		} else if (arg_parser.isReboot()) {
 			/* Start a rebooted server.
 			 * Do sanity check for primary.txt
 			 */
+			SildMain.setPrimary_file(arg_parser.getPrimaryFile());
 			arg_parser.checkFromFile();
+			// Create a SildFS primary server
+			sild = new SildMain(conf_reader.getIp(),
+					conf_reader.getPort(), arg_parser.getDir());
+			sild.setReplica(false);
 
 		} else {
 			/* Start a server without replication.
