@@ -13,7 +13,7 @@ import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
-public class TCPClient
+public class TCPClient2
 {
 	//A 4KB buffer to receive server messages.
 	final static int BUF_LEN = 4096; 
@@ -246,7 +246,7 @@ public class TCPClient
 
 		try
 		{
-			int serverPort = 45929;
+			int serverPort = 7778;
 			if(args.length >1)
 			{
 				try

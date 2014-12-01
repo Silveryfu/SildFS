@@ -3,7 +3,7 @@ package com.sildfs.transaction;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Defines the log which writeS on the disk for successful committed 
+ * Defines the log which writes on the disk for successful committed 
  * transaction
  * 
  * @author admin

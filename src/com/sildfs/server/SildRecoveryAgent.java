@@ -25,13 +25,25 @@ public class SildRecoveryAgent {
 	}
 
 	public void recover() {
+		clearUncommitted();
 		generateFileLocks();
 		recoverTxn();
 		recoverHistory();
 	};
-	
+
 	public void clearUncommitted() {
-		
+		try {
+			File file = new File(this.getDir() + "/.TXN/");
+			File[] txn_list = file.listFiles();
+			for (File txn_dir : txn_list) {
+				File f = new File(txn_dir.getAbsolutePath() + "/C");
+				if (!f.exists())
+					deleteDirectory(txn_dir);
+			}
+		} catch (Exception e) {
+			System.out
+					.println("--P-- Unable to clean up the uncommitted files.");
+		}
 	}
 
 	public void generateFileLocks() {
@@ -77,12 +89,13 @@ public class SildRecoveryAgent {
 				Arrays.sort(elist);
 				for (int j = 0; j < elist.length; j++) {
 					String file_name = elist[j].getName();
-					if(file_name.contains("O")) continue;
-					if(file_name.contains("C")) {
+					if (file_name.contains("O"))
+						continue;
+					if (file_name.contains("C")) {
 						SildHandler.getCommitted_txn().put(tid, true);
 						continue;
-					} 
-					
+					}
+
 					int seq_num = Integer.valueOf(file_name);
 					FileInputStream fis = new FileInputStream(elist[j]);
 					ObjectInputStream ois = new ObjectInputStream(fis);
@@ -105,10 +118,23 @@ public class SildRecoveryAgent {
 			e.printStackTrace();
 		}
 	}
-	
+
+	public void deleteDirectory(File path) throws Exception {
+		File[] sub = path.listFiles();
+		for (File file : sub) {
+			if (file.isDirectory()) {
+				deleteDirectory(file);
+				file.delete();
+			} else {
+				file.delete();
+			}
+		}
+		path.delete();
+	}
+
 	public void recoverFiles() {
 	}
-	
+
 	public void recoverHistory() {
 	}
 

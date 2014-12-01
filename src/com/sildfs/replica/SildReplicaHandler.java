@@ -25,7 +25,7 @@ public class SildReplicaHandler implements Runnable {
 	private String log_dir;
 	private TreeMap<Integer, Integer> commit_order;
 	private HashMap<Integer, SildTxn> txn_list;
-	private static final int TIME_OUT = 120000;
+	private static final int TIME_OUT = 12000;
 
 	public void run() {
 		boolean isLiveReplication = false;
@@ -133,20 +133,19 @@ public class SildReplicaHandler implements Runnable {
 			long endTime = System.currentTimeMillis();
 			System.out.println("--R-- Log replication completed -- using: "
 					+ (-startTime + endTime) + " ms.");
+			// Apply the live replication
+			if (isLiveReplication)
+				replayLive(tid);
+			
+			// Apply the log to rebuild the files
+			else
+				replay();
+			
+			// Reply an ACK to the primary
+			replyToPrimary("ACK");
 		} catch (Exception e) {
-			e.printStackTrace();
+			System.out.println("--R-- Malicious attacks detected. Request ignored.");
 		}
-
-		// Apply the live replication
-		if (isLiveReplication)
-			replayLive(tid);
-
-		// Apply the log to rebuild the files
-		else
-			replay();
-
-		// Reply an ACK to the primary
-		replyToPrimary("ACK");
 	}
 
 	public void replyToPrimary(String message) {
