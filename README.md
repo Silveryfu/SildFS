@@ -24,6 +24,8 @@ To run a plain server without replication (asm 2):
 
 > server -dir DIRECTORY
 
+Notice: If you try to run the primary and the replica on the same machine, please make sure the directories are different (so as to the IP if necessary).
+
 Example:
 
 1. We first start a primary server in /home/dif/docs, at IP and port specified in file primary.txt
