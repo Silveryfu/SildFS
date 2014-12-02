@@ -20,8 +20,8 @@ public class CopyOfserver {
 		arg_parser.parse(args);
 
 		if (arg_parser.isPrimary()) {
-			/*
-			 * Start a primary server. Do sanity check for primary.txt
+			/* Start a primary server.
+			 * Do sanity check for primary.txt
 			 */
 			arg_parser.checkFromFile();
 
@@ -30,8 +30,8 @@ public class CopyOfserver {
 			conf_reader.read(arg_parser.getPrimaryFile());
 
 			// Create a SildFS primary server
-			sild = new SildMain(conf_reader.getIp(), conf_reader.getPort(),
-					arg_parser.getDir());
+			sild = new SildMain(conf_reader.getIp(),
+					conf_reader.getPort(), arg_parser.getDir());
 			sild.setReplica(false);
 			SildMain.setSild(sild);
 
@@ -39,15 +39,15 @@ public class CopyOfserver {
 			sild.startService();
 
 		} else if (arg_parser.isReplica()) {
-			/*
-			 * Start a replica server. Do sanity check for primary.txt
+			/* Start a replica server.
+			 * Do sanity check for primary.txt
 			 */
 			arg_parser.checkFromFile();
 			arg_parser.checkReplica();
-
+			
 			SildMain.setPrimary_file(arg_parser.getPrimaryFile());
 			conf_reader.read(arg_parser.getPrimaryFile());
-
+			
 			// Start a server from command line input
 			String dir = arg_parser.getDir();
 			String ip = arg_parser.getIp();
@@ -57,25 +57,24 @@ public class CopyOfserver {
 			sild.setReplica(true);
 			sild.setPrimary_ip(conf_reader.getIp());
 			sild.setPrimary_port(conf_reader.getPort());
-			sild.setBackup_port(arg_parser.getBackup_port());
+			
 			SildMain.setSild(sild);
-
+			
 			sild.startReplicaService();
 		} else if (arg_parser.isReboot()) {
-			/*
-			 * Start a rebooted server. Do sanity check for primary.txt
+			/* Start a rebooted server.
+			 * Do sanity check for primary.txt
 			 */
 			SildMain.setPrimary_file(arg_parser.getPrimaryFile());
 			arg_parser.checkFromFile();
 			// Create a SildFS primary server
-			sild = new SildMain(conf_reader.getIp(), conf_reader.getPort(),
-					arg_parser.getDir());
+			sild = new SildMain(conf_reader.getIp(),
+					conf_reader.getPort(), arg_parser.getDir());
 			sild.setReplica(false);
 
 		} else {
-			/*
-			 * Start a server without replication. Do sanity check for
-			 * primary.txt
+			/* Start a server without replication.
+			 * Do sanity check for primary.txt
 			 */
 			arg_parser.checkPlain();
 			// Start a server from command line input

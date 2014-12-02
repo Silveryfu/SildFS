@@ -96,7 +96,7 @@ public class SildArgParser {
 	public void checkReplica() {
 		try {
 			if (this.getIp() == null || this.getPort() == 0
-					|| this.getDir() == null || this.getBackup_port() == 0)
+					|| this.getDir() == null)
 				throw new SildInvalidReplicaException();
 
 			Path path = Paths.get(this.getDir());

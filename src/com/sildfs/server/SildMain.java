@@ -65,7 +65,6 @@ public class SildMain implements Runnable {
 	 */
 	private String primary_ip;
 	private int primary_port;
-	private int backup_port;
 
 	/**
 	 * The path to the primary server configuration file
@@ -121,10 +120,10 @@ public class SildMain implements Runnable {
 
 		// Modify the primary server configuration file
 		SildConfModifier sm = new SildConfModifier();
-		sm.modify(primary_file, this.getIp(), this.getBackup_port());
+		sm.modify(primary_file, this.getIp(), this.getPortNumber());
 		System.out.println("--R-- Configuration file modification completed.");
 
-		this.setPortNumber(this.getBackup_port());
+		this.setPortNumber(this.getPortNumber());
 		this.setReplica(false);
 		System.out
 				.println("--R-- Primary server configuration completed. Launching primary server.");
@@ -237,15 +236,7 @@ public class SildMain implements Runnable {
 	public int getPortNumber() {
 		return portNumber;
 	}
-
-	public int getBackup_port() {
-		return backup_port;
-	}
-
-	public void setBackup_port(int backup_port) {
-		this.backup_port = backup_port;
-	}
-
+	
 	public void setPortNumber(int portNumber) {
 		this.portNumber = portNumber;
 	}

@@ -35,6 +35,9 @@ public class SildRecoveryAgent {
 		try {
 			File file = new File(this.getDir() + "/.TXN/");
 			File[] txn_list = file.listFiles();
+			if (txn_list == null) {
+				return;
+			}
 			for (File txn_dir : txn_list) {
 				File f = new File(txn_dir.getAbsolutePath() + "/C");
 				if (!f.exists())
@@ -43,6 +46,7 @@ public class SildRecoveryAgent {
 		} catch (Exception e) {
 			System.out
 					.println("--P-- Unable to clean up the uncommitted files.");
+			e.printStackTrace();
 		}
 	}
 

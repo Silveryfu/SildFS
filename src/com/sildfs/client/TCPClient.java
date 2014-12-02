@@ -246,7 +246,7 @@ public class TCPClient
 
 		try
 		{
-			int serverPort = 45929;
+			int serverPort = 7896;
 			if(args.length >1)
 			{
 				try

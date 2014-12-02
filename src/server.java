@@ -57,7 +57,7 @@ public class server {
 			sild.setReplica(true);
 			sild.setPrimary_ip(conf_reader.getIp());
 			sild.setPrimary_port(conf_reader.getPort());
-			sild.setBackup_port(arg_parser.getBackup_port());
+			
 			SildMain.setSild(sild);
 			
 			sild.startReplicaService();

@@ -1,12 +1,13 @@
 package com.sildfs.transaction;
 
+import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Defines the log which writes on the disk for successful committed 
  * transaction
  * 
- * @author admin
+ * @author dif
  */
 
 public class SildLog {
@@ -35,7 +36,11 @@ public class SildLog {
 	}
 
 	public static synchronized int getAvail_txn_id() {
-		while(used_txn.get(++avail_txn_id) != null);
+		Random rn = new Random();
+		avail_txn_id = rn.nextInt(100000) + 100000;
+		while(used_txn.get(avail_txn_id) != null) {
+			avail_txn_id = rn.nextInt(100000) + 100000;
+		}
 		used_txn.put(avail_txn_id, true);
 		return avail_txn_id;
 	}

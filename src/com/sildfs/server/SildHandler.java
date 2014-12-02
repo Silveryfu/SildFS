@@ -507,6 +507,7 @@ public class SildHandler implements Runnable {
 		primary_agent.setReplica_ip(ip_port[0]);
 		primary_agent.setReplica_port(Integer.valueOf(ip_port[1]));
 		primary_agent.setLog_base(this.getDir() + "/.TXN/");
+		primary_agent.setDir(this.getDir());
 		isReplicated.set(true);
 		primary_agent.foo();
 		try {
